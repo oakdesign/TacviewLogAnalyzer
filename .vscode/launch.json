@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "CLI: tacview-analyze (module)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "tacview_log_analyzer.cli",
+      "args": [],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "CLI with file",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "tacview_log_analyzer.cli",
+      "args": ["${workspaceFolder}/2025-09-06_18-48-30.xml"],
+      "console": "integratedTerminal"
+    }
+  ]
+}

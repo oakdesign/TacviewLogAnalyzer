@@ -1,0 +1,10 @@
+* text=auto eol=lf
+
+# Treat PowerShell scripts as text and normalize line endings
+*.ps1 text eol=crlf
+*.psm1 text eol=crlf
+
+# Keep images binary
+*.png binary
+*.jpg binary
+*.gif binary

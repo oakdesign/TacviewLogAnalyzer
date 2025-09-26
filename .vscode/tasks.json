@@ -1,0 +1,40 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Create venv",
+      "type": "shell",
+      "command": "python -m venv .venv",
+      "problemMatcher": []
+    },
+    {
+      "label": "Install dev deps",
+      "type": "shell",
+      "command": ".venv\\Scripts\\python.exe -m pip install -U pip ; .venv\\Scripts\\python.exe -m pip install -e .[dev]",
+      "dependsOn": "Create venv",
+      "problemMatcher": []
+    },
+    {
+      "label": "Run tests",
+      "type": "shell",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": ["$python"]
+    },
+    {
+      "label": "Build wheel",
+      "type": "shell",
+      "command": ".venv\\Scripts\\python.exe -m build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build exe (PyInstaller)",
+      "type": "shell",
+      "command": ".venv\\Scripts\\pyinstaller.exe --noconfirm --onefile --name TacviewLogAnalyzer --console --paths src src/tacview_log_analyzer/cli.py",
+      "problemMatcher": []
+    }
+  ]
+}

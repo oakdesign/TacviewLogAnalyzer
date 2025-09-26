@@ -1,0 +1,29 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.build/
+build/
+dist/
+.eggs/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# VS Code - keep workspace settings tracked (optional)
+# .vscode/
+
+# PyInstaller
+*.spec
+__pycache__/*
+*.manifest
+*.dll
+
+# OS files
+.DS_Store
+Thumbs.db
