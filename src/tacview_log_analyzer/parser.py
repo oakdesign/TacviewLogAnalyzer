@@ -91,10 +91,16 @@ def parse_file(path: Path | str) -> TacviewDebriefing:
     mission_node = root.find("Mission")
     mission = None
     if mission_node is not None:
+        main_ac_id = None
+        try:
+            main_ac_id = int(_text(mission_node.find("MainAircraftID")) or "")
+        except Exception:
+            main_ac_id = None
         mission = Mission(
             title=_text(mission_node.find("Title")),
             mission_time=_text(mission_node.find("MissionTime")),
             duration=_float(mission_node.find("Duration")),
+            main_aircraft_id=main_ac_id,
         )
 
     events: list[EventRecord] = []

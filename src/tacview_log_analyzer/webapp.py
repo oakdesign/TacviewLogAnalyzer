@@ -37,6 +37,6 @@ def index(xml: Optional[str] = Query(default=None, description="Path to Tacview 
         template = env.get_template("index.html")
         return template.render(error=f"File not found: {xml}", hasData=False)
     deb = parse_file(p)
-    vm = build_pilot_view_model(deb.events)
+    vm = build_pilot_view_model(deb.events, deb.mission)
     template = env.get_template("index.html")
     return template.render(error=None, hasData=True, vm=vm, xml=str(p))

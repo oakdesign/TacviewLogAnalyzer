@@ -4,12 +4,19 @@ from collections import defaultdict
 from typing import Any, Dict, List
 
 from .linking import extract_shots_hits_kills, link_events_combined
-from .models import EventRecord
-from .stats import (compute_flight_outcomes_by_pilot,
-                    compute_flight_time_by_pilot)
+from .models import Action, EventRecord, Mission
+from .stats import compute_flight_outcomes_by_pilot, compute_flight_time_by_pilot
 
 
-def build_pilot_view_model(events: List[EventRecord]) -> Dict[str, Any]:
+def _fmt_hhmmss(value_seconds: float) -> str:
+    s = int(max(0, round(value_seconds)))
+    hh = s // 3600
+    mm = (s % 3600) // 60
+    ss = s % 60
+    return f"{hh:02d}:{mm:02d}:{ss:02d}"
+
+
+def build_pilot_view_model(events: List[EventRecord], mission: Mission | None = None) -> Dict[str, Any]:
     """Build a pilot-rooted tree view model from events using combined linking.
 
         Notes:
@@ -40,6 +47,17 @@ def build_pilot_view_model(events: List[EventRecord]) -> Dict[str, Any]:
     # Flight times and end reason per pilot
     outcomes = compute_flight_outcomes_by_pilot(events)
     flight_times = {p: d for p, (d, _r) in outcomes.items()}
+
+    # Determine mission start for relative time display
+    mission_start = min((e.time for e in events), default=0.0)
+    if mission and mission.duration and mission.main_aircraft_id is not None:
+        destroyed_times = [
+            e.time
+            for e in events
+            if e.action == Action.HAS_BEEN_DESTROYED and e.primary and e.primary.id == mission.main_aircraft_id
+        ]
+        if destroyed_times:
+            mission_start = max(destroyed_times) - mission.duration
 
     # Group chains per pilot
     chains_by_pilot: Dict[str, List] = defaultdict(list)
@@ -73,14 +91,21 @@ def build_pilot_view_model(events: List[EventRecord]) -> Dict[str, Any]:
             ksec = (c.kill.event.secondary.coalition or "").strip().lower()
             if kprim and ksec and kprim == ksec:
                 is_friendly_kill = True
+        # Relative times and formatted strings
+        shot_rel = max(0.0, c.shot.time - mission_start)
+        hit_rel = max(0.0, c.hit.time - mission_start) if c.hit else None
+        kill_rel = max(0.0, c.kill.time - mission_start) if c.kill else None
         chains_by_pilot[pilot].append(
             {
-                "shotT": c.shot.time,
+                "shotT": shot_rel,
                 "weapon": c.shot.weapon_name,
                 "weaponId": c.shot.weapon_id,
                 "targetName": tname,
-                "hitT": c.hit.time if c.hit else None,
-                "killT": c.kill.time if c.kill else None,
+                "hitT": hit_rel,
+                "killT": kill_rel,
+                "shotStr": _fmt_hhmmss(shot_rel),
+                "hitStr": _fmt_hhmmss(hit_rel) if hit_rel is not None else "",
+                "killStr": _fmt_hhmmss(kill_rel) if kill_rel is not None else "",
                 "method": c.method,
                 "shooterMismatch": not c.shooter_consistent,
                 "friendly": bool(is_friendly_hit or is_friendly_kill),
@@ -110,9 +135,11 @@ def build_pilot_view_model(events: List[EventRecord]) -> Dict[str, Any]:
         s for s in leftover_shots if (s.weapon_type or "").lower() not in exclude_types
     ]
     for s in filtered_leftover_shots:
+        rel = max(0.0, s.time - mission_start)
         misses_by_pilot[s.shooter_pilot or ""].append(
             {
-                "shotT": s.time,
+                "shotT": rel,
+                "shotStr": _fmt_hhmmss(rel),
                 "weapon": s.weapon_name,
                 "weaponId": s.weapon_id,
             }

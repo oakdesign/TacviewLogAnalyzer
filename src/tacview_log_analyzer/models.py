@@ -55,6 +55,7 @@ class Mission:
     title: Optional[str]
     mission_time: Optional[str]
     duration: Optional[float]
+    main_aircraft_id: Optional[int] = None
 
 
 @dataclass(slots=True)

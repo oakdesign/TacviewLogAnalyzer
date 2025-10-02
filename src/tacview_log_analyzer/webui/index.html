@@ -120,12 +120,12 @@
           <tbody>
             {% for c in p.chains %}
             <tr>
-              <td>{{ '%.2f'|format(c.shotT) }}</td>
+              <td title="{{ '%.2f'|format(c.shotT) }}">{{ c.shotStr or ('%.2f'|format(c.shotT)) }}</td>
               <td>{{ c.weapon }}</td>
               <td>{{ c.weaponId }}</td>
               <td>{{ c.targetName or '' }}</td>
-              <td>{{ c.hitT and '%.2f'|format(c.hitT) or '' }}</td>
-              <td>{{ c.killT and '%.2f'|format(c.killT) or '' }}</td>
+              <td title="{{ c.hitT and '%.2f'|format(c.hitT) or '' }}">{{ c.hitStr }}</td>
+              <td title="{{ c.killT and '%.2f'|format(c.killT) or '' }}">{{ c.killStr }}</td>
               <td>
                 {{ c.method }}{% if c.shooterMismatch %}, ShooterMismatch{%
                 endif %}{% if c.friendly %}, Friendly{% endif %}
@@ -133,7 +133,7 @@
             </tr>
             {% endfor %} {% for m in p.misses %}
             <tr>
-              <td>{{ '%.2f'|format(m.shotT) }}</td>
+              <td title="{{ '%.2f'|format(m.shotT) }}">{{ m.shotStr or ('%.2f'|format(m.shotT)) }}</td>
               <td>{{ m.weapon }}</td>
               <td>{{ m.weaponId }}</td>
             </tr>
