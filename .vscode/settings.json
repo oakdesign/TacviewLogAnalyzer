@@ -12,5 +12,6 @@
   },
   "ruff.lint.args": [],
   "ruff.lint.run": "onType",
-  "ruff.organizeImports": true
+  "ruff.organizeImports": true,
+  "xml.symbols.maxItemsComputed": 10000
 }

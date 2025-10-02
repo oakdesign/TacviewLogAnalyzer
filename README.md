@@ -3,6 +3,7 @@
 A Python project to parse Tacview XML logs and generate statistics. This is the base scaffolding with CLI, packaging, tests, and Windows build hooks. Business logic will be added later.
 
 ## Features (now)
+
 - src/ layout Python package: `tacview_log_analyzer`
 - CLI entry: `tacview-analyze`
 - Tests via pytest
@@ -32,6 +33,7 @@ pyinstaller --noconfirm --onefile --name TacviewLogAnalyzer --console --paths sr
 ```
 
 ## Project layout
+
 - `src/tacview_log_analyzer/cli.py` – CLI entry point (no business logic yet)
 - `src/tacview_log_analyzer/__init__.py` – package metadata
 - `tests/` – minimal smoke tests
@@ -39,6 +41,7 @@ pyinstaller --noconfirm --onefile --name TacviewLogAnalyzer --console --paths sr
 - `pyproject.toml` – packaging config
 
 ## Next steps
+
 - Define XML schema/data points and write parsing services
 - Add domain models and statistics calculators
 - Wire CLI options to run parsing and output reports

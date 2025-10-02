@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tacview Log Analyzer - Web UI</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 1rem; }
+    .pilot { margin: .5rem 0; }
+    summary { cursor: pointer; font-weight: 600; }
+    .muted { color: #666; }
+    .counts { font-size: .9rem; color: #444; margin-left: .5rem; }
+    table { border-collapse: collapse; margin: .5rem 0; }
+    th, td { border: 1px solid #ddd; padding: .3rem .5rem; }
+    th { background: #f6f6f6; }
+    code { background: #f5f5f5; padding: .1rem .3rem; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <h1>Tacview Log Analyzer</h1>
+
+  <form method="get">
+    <label>XML file path: <input type="text" name="xml" value="{{ xml or '' }}" size="80" /></label>
+    <button type="submit">Load</button>
+  </form>
+
+  {% if error %}
+  <p style="color:#b00">{{ error }}</p>
+  {% endif %}
+
+  {% if hasData %}
+  <p class="muted">Loaded: <code>{{ xml }}</code></p>
+
+  {% for p in vm.pilots %}
+    <details class="pilot" >
+      <summary>
+        {{ p.pilot or 'Unknown' }}
+  <span class="counts">Shots {{ p.totals.shots }} · Hits {{ p.totals.hits }} · Kills {{ p.totals.kills }} · Misses {{ p.totals.misses }} · Flight {{ p.flightTime }}{% if p.flightEnd %} · End {{ p.flightEnd }}{% endif %}</span>
+      </summary>
+
+      <details open>
+        <summary>Weapon summary ({{ p.byWeapon | length }})</summary>
+        <table>
+          <thead>
+            <tr><th>Weapon</th><th>Shots</th><th>Hits</th><th>Kills</th><th>Misses</th></tr>
+          </thead>
+          <tbody>
+          {% for w in p.byWeapon %}
+            <tr>
+              <td>{{ w.weapon }}</td>
+              <td>{{ w.shots }}</td>
+              <td>{{ w.hits }}</td>
+              <td>{{ w.kills }}</td>
+              <td>{{ w.misses }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </details>
+
+      <details>
+        <summary>Events ({{ (p.chains | length) + (p.misses | length) }})</summary>
+        <table>
+          <thead>
+            <tr><th>ShotT</th><th>Weapon</th><th>WeaponID</th><th>Target</th><th>HitT</th><th>KillT</th><th>Flags</th></tr>
+          </thead>
+          <tbody>
+          {% for c in p.chains %}
+            <tr>
+              <td>{{ '%.2f'|format(c.shotT) }}</td>
+              <td>{{ c.weapon }}</td>
+              <td>{{ c.weaponId }}</td>
+              <td>{{ c.targetName or '' }}</td>
+              <td>{{ c.hitT and '%.2f'|format(c.hitT) or '' }}</td>
+              <td>{{ c.killT and '%.2f'|format(c.killT) or '' }}</td>
+              <td>{{ c.method }}{% if c.shooterMismatch %}, ShooterMismatch{% endif %}{% if c.friendly %}, Friendly{% endif %}</td>
+            </tr>
+          {% endfor %}
+          {% for m in p.misses %}
+            <tr>
+              <td>{{ '%.2f'|format(m.shotT) }}</td>
+              <td>{{ m.weapon }}</td>
+              <td>{{ m.weaponId }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </details>
+
+      <!--<details>
+        <summary>Misses ({{ p.misses | length }}) <span class="muted">(excludes Shell & Parachutist)</span></summary>
+        <table>
+          <thead>
+            <tr><th>ShotT</th><th>Weapon</th><th>WeaponID</th></tr>
+          </thead>
+          <tbody>
+          {% for m in p.misses %}
+            <tr>
+              <td>{{ '%.2f'|format(m.shotT) }}</td>
+              <td>{{ m.weapon }}</td>
+              <td>{{ m.weaponId }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </details>-->
+    </details>
+  {% endfor %}
+  {% endif %}
+
+</body>
+</html>
