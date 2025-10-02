@@ -245,15 +245,19 @@ def render_chains(chains: List[Chain]) -> List[str]:
         wid = c.shot.weapon_id
         tgt = c.hit.target_id if c.hit else None
         # Friendly fire detection by coalition comparison
-        shooter_coal = ""
-        if c.shot.event.primary and c.shot.event.primary.coalition:
-            shooter_coal = c.shot.event.primary.coalition.strip().lower()
-        target_coal = ""
-        if c.hit and c.hit.event.primary and c.hit.event.primary.coalition:
-            target_coal = c.hit.event.primary.coalition.strip().lower()
-        elif (not target_coal) and c.kill and c.kill.event.primary and c.kill.event.primary.coalition:
-            target_coal = c.kill.event.primary.coalition.strip().lower()
-        friendly = bool(shooter_coal and target_coal) and shooter_coal == target_coal
+        # Hits: compare target primary (victim) vs shooter's parent coalition on HasBeenHitBy
+        friendly_hit = False
+        if c.hit:
+            tgt_coal = (c.hit.event.primary.coalition or "").strip().lower() if c.hit.event.primary and c.hit.event.primary.coalition else ""
+            shooter_parent = (c.hit.event.parent_object.coalition or "").strip().lower() if c.hit.event.parent_object and c.hit.event.parent_object.coalition else ""
+            friendly_hit = bool(tgt_coal and shooter_parent and tgt_coal == shooter_parent)
+        # Kills: compare kill primary (victim) vs kill secondary (attacker)
+        friendly_kill = False
+        if c.kill:
+            kprim = (c.kill.event.primary.coalition or "").strip().lower() if c.kill.event.primary and c.kill.event.primary.coalition else ""
+            ksec = (c.kill.event.secondary.coalition or "").strip().lower() if c.kill.event.secondary and c.kill.event.secondary.coalition else ""
+            friendly_kill = bool(kprim and ksec and kprim == ksec)
+        friendly = friendly_hit or friendly_kill
         parts = [
             f"Pilot={pilot}",
             f"Weapon={wname}",

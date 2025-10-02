@@ -3,12 +3,10 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any, Dict, List
 
-from .linking import (
-    link_events_combined,
-    extract_shots_hits_kills,
-)
+from .linking import extract_shots_hits_kills, link_events_combined
 from .models import EventRecord
-from .stats import compute_flight_time_by_pilot, compute_flight_outcomes_by_pilot
+from .stats import (compute_flight_outcomes_by_pilot,
+                    compute_flight_time_by_pilot)
 
 
 def build_pilot_view_model(events: List[EventRecord]) -> Dict[str, Any]:
@@ -48,6 +46,10 @@ def build_pilot_view_model(events: List[EventRecord]) -> Dict[str, Any]:
     # Also track unique shot ids that resulted in a hit/kill for reconciliation
     hit_shot_ids_by_pilot: Dict[str, set[int]] = defaultdict(set)
     kill_shot_ids_by_pilot: Dict[str, set[int]] = defaultdict(set)
+    # Friendly-fire aggregates and shot->chain map
+    hits_ff_by_pilot: Dict[str, int] = defaultdict(int)
+    kills_ff_by_pilot: Dict[str, int] = defaultdict(int)
+    chain_by_shotid: Dict[int, Dict[str, Any]] = {}
     for c in chains_filtered:
         pilot = c.shot.shooter_pilot or ""
         # Prefer target name from Hit.primary, fallback to Kill.primary
@@ -56,14 +58,21 @@ def build_pilot_view_model(events: List[EventRecord]) -> Dict[str, Any]:
             tname = c.hit.event.primary.name
         elif c.kill and c.kill.event.primary and c.kill.event.primary.name:
             tname = c.kill.event.primary.name
-        # Friendly fire detection using coalition
-        shooter_coal = (c.shot.event.primary.coalition or "").strip().lower() if c.shot.event.primary and c.shot.event.primary.coalition else ""
-        target_coal = ""
-        if c.hit and c.hit.event.primary and c.hit.event.primary.coalition:
-            target_coal = c.hit.event.primary.coalition.strip().lower()
-        elif c.kill and c.kill.event.primary and c.kill.event.primary.coalition:
-            target_coal = c.kill.event.primary.coalition.strip().lower()
-        is_friendly = bool(shooter_coal and target_coal) and shooter_coal == target_coal
+        # Friendly fire detection (for flags and aggregates):
+        # Hits FF if target primary vs shooter parent coalition are equal
+        is_friendly_hit = False
+        if c.hit and c.hit.event.primary:
+            tgt_coal = (c.hit.event.primary.coalition or "").strip().lower()
+            shooter_parent = (c.hit.event.parent_object.coalition or "").strip().lower() if c.hit.event.parent_object and c.hit.event.parent_object.coalition else ""
+            if tgt_coal and shooter_parent and tgt_coal == shooter_parent:
+                is_friendly_hit = True
+        # Kills FF if kill primary vs kill secondary coalition are equal
+        is_friendly_kill = False
+        if c.kill and c.kill.event.primary and c.kill.event.secondary:
+            kprim = (c.kill.event.primary.coalition or "").strip().lower()
+            ksec = (c.kill.event.secondary.coalition or "").strip().lower()
+            if kprim and ksec and kprim == ksec:
+                is_friendly_kill = True
         chains_by_pilot[pilot].append(
             {
                 "shotT": c.shot.time,
@@ -74,15 +83,22 @@ def build_pilot_view_model(events: List[EventRecord]) -> Dict[str, Any]:
                 "killT": c.kill.time if c.kill else None,
                 "method": c.method,
                 "shooterMismatch": not c.shooter_consistent,
-                "friendly": is_friendly,
+                "friendly": bool(is_friendly_hit or is_friendly_kill),
+                "friendlyHit": is_friendly_hit,
+                "friendlyKill": is_friendly_kill,
             }
         )
         # record unique successful shot ids
         shot_evt_id = id(c.shot.event)
+        chain_by_shotid[shot_evt_id] = chains_by_pilot[pilot][-1]
         if c.hit is not None:
             hit_shot_ids_by_pilot[pilot].add(shot_evt_id)
+            if is_friendly_hit:
+                hits_ff_by_pilot[pilot] += 1
         if c.kill is not None:
             kill_shot_ids_by_pilot[pilot].add(shot_evt_id)
+            if is_friendly_kill:
+                kills_ff_by_pilot[pilot] += 1
 
     # Sort chains by shot time
     for plist in chains_by_pilot.values():
@@ -131,8 +147,20 @@ def build_pilot_view_model(events: List[EventRecord]) -> Dict[str, Any]:
         # Aggregate by weapon
         agg: Dict[str, Dict[str, int]] = defaultdict(lambda: {"shots": 0, "hits": 0, "kills": 0, "misses": 0})
         # shots
+        shots_ff = 0
         for s in pilot_shots:
             agg[s.weapon_name]["shots"] += 1
+            # Shots FF: use LockedObject when present; else infer via linked friendly hit
+            shot_parent = (s.event.parent_object.coalition or "").strip().lower() if s.event.parent_object and s.event.parent_object.coalition else ""
+            locked = (s.event.locked_object.coalition or "").strip().lower() if s.event.locked_object and s.event.locked_object.coalition else ""
+            if shot_parent and locked:
+                if shot_parent == locked:
+                    shots_ff += 1
+            else:
+                # fallback: if the hit for this shot was friendly, count as friendly shot
+                ch = chain_by_shotid.get(id(s.event))
+                if ch and ch.get("friendlyHit"):
+                    shots_ff += 1
         # hits/kills: count unique shot events per weapon so totals reconcile
         if hit_shot_ids_by_pilot.get(pilot):
             # map weapon -> set(shot ids)
@@ -169,6 +197,11 @@ def build_pilot_view_model(events: List[EventRecord]) -> Dict[str, Any]:
             "kills": sum(a["kills"] for a in agg.values()),
             "misses": sum(a["misses"] for a in agg.values()),
         }
+        totals_friendly = {
+            "shots": shots_ff,
+            "hits": hits_ff_by_pilot.get(pilot, 0),
+            "kills": kills_ff_by_pilot.get(pilot, 0),
+        }
 
         result_pilots.append(
             {
@@ -180,6 +213,7 @@ def build_pilot_view_model(events: List[EventRecord]) -> Dict[str, Any]:
                 "flightTime": ft_str,
                 "flightTimeSec": ft_sec if ft_sec is not None else None,
                 "flightEnd": end_reason,
+                "totalsFriendly": totals_friendly,
             }
         )
 
