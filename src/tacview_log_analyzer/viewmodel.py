@@ -5,7 +5,8 @@ from typing import Any, Dict, List
 
 from .linking import extract_shots_hits_kills, link_events_combined
 from .models import Action, EventRecord, Mission
-from .stats import compute_flight_outcomes_by_pilot, compute_flight_time_by_pilot
+from .stats import (compute_flight_outcomes_by_pilot,
+                    compute_flight_time_by_pilot)
 
 
 def _fmt_hhmmss(value_seconds: float) -> str:

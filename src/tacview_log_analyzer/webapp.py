@@ -6,7 +6,8 @@ from typing import Optional
 from fastapi import FastAPI, Query
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from jinja2 import Environment, PackageLoader, FileSystemLoader, select_autoescape
+from jinja2 import (Environment, FileSystemLoader, PackageLoader,
+                    select_autoescape)
 
 from .parser import parse_file
 from .viewmodel import build_pilot_view_model
