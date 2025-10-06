@@ -177,7 +177,8 @@ def build_pilot_view_model(events: List[EventRecord], mission: Mission | None = 
         # shots
         shots_ff = 0
         for s in pilot_shots:
-            agg[s.weapon_name]["shots"] += 1
+            occ = s.event.occurrences if s.event.occurrences and s.event.occurrences > 0 else 1
+            agg[s.weapon_name]["shots"] += occ
             # Shots FF: use LockedObject when present; else infer via linked friendly hit
             shot_parent = (s.event.parent_object.coalition or "").strip().lower() if s.event.parent_object and s.event.parent_object.coalition else ""
             locked = (s.event.locked_object.coalition or "").strip().lower() if s.event.locked_object and s.event.locked_object.coalition else ""
@@ -248,4 +249,41 @@ def build_pilot_view_model(events: List[EventRecord], mission: Mission | None = 
     # Order pilots by total shots desc
     result_pilots.sort(key=lambda p: (-p["totals"]["shots"], p["pilot"]))
 
-    return {"pilots": result_pilots}
+    # Overall stats
+    human_pilots = [p for p in result_pilots if p["pilot"]]
+    landed = sum(1 for p in human_pilots if p.get("flightEnd") == "Landed")
+    ejected_or_shot = sum(1 for p in human_pilots if p.get("flightEnd") in {"Ejected", "Shot down"})
+
+    # Overall per-weapon aggregation (shots / unique hit shots / unique kill shots)
+    shots_by_weapon: Dict[str, int] = defaultdict(int)
+    hit_shots_by_weapon: Dict[str, set[int]] = defaultdict(set)
+    kill_shots_by_weapon: Dict[str, set[int]] = defaultdict(set)
+    for s in shots_all_filtered:
+        occ = s.event.occurrences if s.event.occurrences and s.event.occurrences > 0 else 1
+        shots_by_weapon[s.weapon_name] += occ
+    for c in chains_filtered:
+        w = c.shot.weapon_name
+        sid = id(c.shot.event)
+        if c.hit is not None:
+            hit_shots_by_weapon[w].add(sid)
+        if c.kill is not None:
+            kill_shots_by_weapon[w].add(sid)
+    shots_by_weapon_rows = [
+        {
+            "weapon": w,
+            "shots": shots_by_weapon[w],
+            "hits": len(hit_shots_by_weapon.get(w, set())),
+            "kills": len(kill_shots_by_weapon.get(w, set())),
+        }
+        for w in sorted(shots_by_weapon.keys(), key=lambda x: (-shots_by_weapon[x], x))
+    ]
+
+    return {
+        "pilots": result_pilots,
+        "overview": {
+            "humanPilots": len(human_pilots),
+            "landedPilots": landed,
+            "ejectedOrShotPilots": ejected_or_shot,
+            "shotsByWeapon": shots_by_weapon_rows,
+        },
+    }

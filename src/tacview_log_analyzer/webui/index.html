@@ -45,6 +45,7 @@
   </head>
   <body>
     <h1>Tacview Log Analyzer</h1>
+    <!-- Pilot sorting controls are client-side only; initial order is by shots desc from server. -->
 
     <form method="get">
       <label
@@ -59,98 +60,183 @@
     {% endif %} {% if hasData %}
     <p class="muted">Loaded: <code>{{ xml }}</code></p>
 
-    {% for p in vm.pilots %}
-    <details class="pilot">
-      <summary>
-        {{ p.pilot or 'Unknown' }}
-        <span class="counts"
-          >Shots {{ p.totals.shots }}{% if p.totalsFriendly and
-          p.totalsFriendly.shots %} / {{ p.totalsFriendly.shots }} FF{% endif %}
-          · Hits {{ p.totals.hits }}{% if p.totalsFriendly and
-          p.totalsFriendly.hits %} / {{ p.totalsFriendly.hits }} FF{% endif %} ·
-          Kills {{ p.totals.kills }}{% if p.totalsFriendly and
-          p.totalsFriendly.kills %} / {{ p.totalsFriendly.kills }} FF{% endif %}
-          · Misses {{ p.totals.misses }} · Flight {{ p.flightTime }}{% if
-          p.flightEnd %} · End {{ p.flightEnd }}{% endif %}</span
-        >
-      </summary>
+    {% if vm.overview %}
+    <h2>Overall</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Human Pilots</th>
+          <th>Landed</th>
+          <th>Ejected / Shot down</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>{{ vm.overview.humanPilots }}</td>
+          <td>{{ vm.overview.landedPilots }}</td>
+          <td>{{ vm.overview.ejectedOrShotPilots }}</td>
+        </tr>
+      </tbody>
+    </table>
 
-      <details open>
-        <summary>Weapon summary ({{ p.byWeapon | length }})</summary>
-        <table>
-          <thead>
-            <tr>
-              <th>Weapon</th>
-              <th>Shots</th>
-              <th>Hits</th>
-              <th>Kills</th>
-              <th>Misses</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for w in p.byWeapon %}
-            <tr>
-              <td>{{ w.weapon }}</td>
-              <td>{{ w.shots }}</td>
-              <td>{{ w.hits }}</td>
-              <td>{{ w.kills }}</td>
-              <td>{{ w.misses }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </details>
+    {% if vm.overview.shotsByWeapon %}
+    <h3>Shots / Hits / Kills by Weapon</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Weapon</th>
+          <th>Shots</th>
+          <th>Hits</th>
+          <th>Kills</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in vm.overview.shotsByWeapon %}
+        <tr>
+          <td>{{ row.weapon }}</td>
+          <td>{{ row.shots }}</td>
+          <td>{{ row.hits }}</td>
+          <td>{{ row.kills }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %} {% endif %}
 
-      <details>
+    <div
+      id="pilot-sorting"
+      style="margin: 0.5rem 0; display: none; gap: 0.5rem; flex-wrap: wrap"
+    >
+      <strong>Sort pilots:</strong>
+      <button
+        type="button"
+        data-sort="shots"
+        title="Sort by total shots (desc)"
+      >
+        Shots ↓
+      </button>
+      <button
+        type="button"
+        data-sort="kills"
+        title="Sort by total kills (desc)"
+      >
+        Kills ↓
+      </button>
+      <button
+        type="button"
+        data-sort="name"
+        title="Sort alphabetically by pilot name"
+      >
+        Name A→Z
+      </button>
+      <button
+        type="button"
+        data-sort="default"
+        title="Original order (shots desc)"
+      >
+        Default
+      </button>
+    </div>
+
+    <div id="pilots-container">
+      {% for p in vm.pilots %}
+      <details
+        class="pilot"
+        data-pilot-name="{{ p.pilot or '' }}"
+        data-pilot-shots="{{ p.totals.shots }}"
+        data-pilot-kills="{{ p.totals.kills }}"
+        data-default-index="{{ loop.index0 }}"
+      >
         <summary>
-          Events ({{ (p.chains | length) + (p.misses | length) }})
+          {{ p.pilot or 'Unknown' }}
+          <span class="counts"
+            >Shots {{ p.totals.shots }}{% if p.totalsFriendly and
+            p.totalsFriendly.shots %} / {{ p.totalsFriendly.shots }} FF{% endif
+            %} · Hits {{ p.totals.hits }}{% if p.totalsFriendly and
+            p.totalsFriendly.hits %} / {{ p.totalsFriendly.hits }} FF{% endif %}
+            · Kills {{ p.totals.kills }}{% if p.totalsFriendly and
+            p.totalsFriendly.kills %} / {{ p.totalsFriendly.kills }} FF{% endif
+            %} · Misses {{ p.totals.misses }} · Flight {{ p.flightTime }}{% if
+            p.flightEnd %} · End {{ p.flightEnd }}{% endif %}</span
+          >
         </summary>
-        <table>
-          <thead>
-            <tr>
-              <th>ShotT</th>
-              <th>Weapon</th>
-              <th>WeaponID</th>
-              <th>Target</th>
-              <th>HitT</th>
-              <th>KillT</th>
-              <th>Flags</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for c in p.chains %}
-            <tr>
-              <td title="{{ '%.2f'|format(c.shotT) }}">
-                {{ c.shotStr or ('%.2f'|format(c.shotT)) }}
-              </td>
-              <td>{{ c.weapon }}</td>
-              <td>{{ c.weaponId }}</td>
-              <td>{{ c.targetName or '' }}</td>
-              <td title="{{ c.hitT and '%.2f'|format(c.hitT) or '' }}">
-                {{ c.hitStr }}
-              </td>
-              <td title="{{ c.killT and '%.2f'|format(c.killT) or '' }}">
-                {{ c.killStr }}
-              </td>
-              <td>
-                {{ c.method }}{% if c.shooterMismatch %}, ShooterMismatch{%
-                endif %}{% if c.friendly %}, Friendly{% endif %}
-              </td>
-            </tr>
-            {% endfor %} {% for m in p.misses %}
-            <tr>
-              <td title="{{ '%.2f'|format(m.shotT) }}">
-                {{ m.shotStr or ('%.2f'|format(m.shotT)) }}
-              </td>
-              <td>{{ m.weapon }}</td>
-              <td>{{ m.weaponId }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </details>
 
-      <!--<details>
+        <details open>
+          <summary>Weapon summary ({{ p.byWeapon | length }})</summary>
+          <table>
+            <thead>
+              <tr>
+                <th>Weapon</th>
+                <th>Shots</th>
+                <th>Hits</th>
+                <th>Kills</th>
+                <th>Misses</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for w in p.byWeapon %}
+              <tr>
+                <td>{{ w.weapon }}</td>
+                <td>{{ w.shots }}</td>
+                <td>{{ w.hits }}</td>
+                <td>{{ w.kills }}</td>
+                <td>{{ w.misses }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </details>
+
+        <details>
+          <summary>
+            Events ({{ (p.chains | length) + (p.misses | length) }})
+          </summary>
+          <table>
+            <thead>
+              <tr>
+                <th>ShotT</th>
+                <th>Weapon</th>
+                <th>WeaponID</th>
+                <th>Target</th>
+                <th>HitT</th>
+                <th>KillT</th>
+                <th>Flags</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in p.chains %}
+              <tr>
+                <td title="{{ '%.2f'|format(c.shotT) }}">
+                  {{ c.shotStr or ('%.2f'|format(c.shotT)) }}
+                </td>
+                <td>{{ c.weapon }}</td>
+                <td>{{ c.weaponId }}</td>
+                <td>{{ c.targetName or '' }}</td>
+                <td title="{{ c.hitT and '%.2f'|format(c.hitT) or '' }}">
+                  {{ c.hitStr }}
+                </td>
+                <td title="{{ c.killT and '%.2f'|format(c.killT) or '' }}">
+                  {{ c.killStr }}
+                </td>
+                <td>
+                  {{ c.method }}{% if c.shooterMismatch %}, ShooterMismatch{%
+                  endif %}{% if c.friendly %}, Friendly{% endif %}
+                </td>
+              </tr>
+              {% endfor %} {% for m in p.misses %}
+              <tr>
+                <td title="{{ '%.2f'|format(m.shotT) }}">
+                  {{ m.shotStr or ('%.2f'|format(m.shotT)) }}
+                </td>
+                <td>{{ m.weapon }}</td>
+                <td>{{ m.weaponId }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </details>
+
+        <!--<details>
         <summary>Misses ({{ p.misses | length }}) <span class="muted">(excludes Shell & Parachutist)</span></summary>
         <table>
           <thead>
@@ -167,7 +253,52 @@
           </tbody>
         </table>
       </details>-->
-    </details>
-    {% endfor %} {% endif %}
+      </details>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <script>
+      (function () {
+        const container = document.getElementById("pilots-container");
+        const bar = document.getElementById("pilot-sorting");
+        if (!container || !bar) return;
+        const pilots = Array.from(container.querySelectorAll("details.pilot"));
+        if (pilots.length === 0) return;
+        bar.style.display = "flex";
+        const original = pilots.slice();
+        function applySort(kind) {
+          let sorted = pilots.slice();
+          if (kind === "shots") {
+            sorted.sort(
+              (a, b) =>
+                Number(b.dataset.pilotShots) - Number(a.dataset.pilotShots) ||
+                a.dataset.pilotName.localeCompare(b.dataset.pilotName)
+            );
+          } else if (kind === "kills") {
+            sorted.sort(
+              (a, b) =>
+                Number(b.dataset.pilotKills) - Number(a.dataset.pilotKills) ||
+                a.dataset.pilotName.localeCompare(b.dataset.pilotName)
+            );
+          } else if (kind === "name") {
+            sorted.sort((a, b) =>
+              a.dataset.pilotName.localeCompare(b.dataset.pilotName)
+            );
+          } else if (kind === "default") {
+            sorted = original.slice();
+          }
+          // detach then append in order
+          const frag = document.createDocumentFragment();
+          sorted.forEach((el) => frag.appendChild(el));
+          container.innerHTML = "";
+          container.appendChild(frag);
+        }
+        bar.addEventListener("click", (e) => {
+          const btn = e.target.closest("button[data-sort]");
+          if (!btn) return;
+          applySort(btn.dataset.sort);
+        });
+      })();
+    </script>
   </body>
 </html>

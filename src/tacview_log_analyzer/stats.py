@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, Tuple, Optional, Literal
+from typing import Dict, Iterable, Literal, Optional, Tuple
 
 from .models import Action, EventRecord
 from .parser import has_pilot
@@ -26,13 +26,14 @@ def accumulate_pilot_stats(events: Iterable[EventRecord]) -> dict[str, PilotStat
 
     for e in events:
         if e.action == Action.HAS_FIRED and e.primary and has_pilot(e.primary):
+            occ = e.occurrences if e.occurrences and e.occurrences > 0 else 1
             pstats = bucket(e.primary.pilot or "")
-            pstats.shots += 1
-            # weapon information from SecondaryObject (missile)
+            pstats.shots += occ
+            # weapon information from SecondaryObject (missile/bomb)
             wname = (e.secondary.name if e.secondary and e.secondary.name else "Unknown").strip()
             wtype = (e.secondary.type if e.secondary and e.secondary.type else "").strip()
             key = (wname, wtype)
-            pstats.weapon_shots[key] = pstats.weapon_shots.get(key, 0) + 1
+            pstats.weapon_shots[key] = pstats.weapon_shots.get(key, 0) + occ
         elif e.action == Action.HAS_BEEN_HIT_BY and e.parent_object and has_pilot(e.parent_object):
             bucket(e.parent_object.pilot or "").hits += 1
         elif e.action == Action.HAS_BEEN_DESTROYED and e.secondary and has_pilot(e.secondary):
