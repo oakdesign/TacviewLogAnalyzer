@@ -31,7 +31,7 @@ jobs:
       - name: Build executable
         run: |
           .\.venv\Scripts\activate
-          .\.venv\Scripts\pyinstaller.exe TacviewLogAnalyzer.spec
+          .\.venv\Scripts\pyinstaller.exe --noconfirm --onefile --name TacviewLogAnalyzer --console --paths src --add-data "src/tacview_log_analyzer/webui;tacview_log_analyzer/webui" --hidden-import "tacview_log_analyzer.web_entry" --hidden-import "tacview_log_analyzer.webapp" --hidden-import "uvicorn.main" --hidden-import "uvicorn.config" --hidden-import "uvicorn.server" --hidden-import "uvicorn.protocols.http.auto" --hidden-import "uvicorn.protocols.websockets.auto" --hidden-import "uvicorn.lifespan.on" standalone_main.py
 
       - name: Test executable
         run: |
