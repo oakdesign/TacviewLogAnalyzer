@@ -27,7 +27,7 @@ Write-Host "Running tests..."
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "Building standalone exe..."
-& $pyinstaller --noconfirm --onefile --name TacviewLogAnalyzer --console --paths src standalone_main.py
+& $pyinstaller TacviewLogAnalyzer.spec
 
 Write-Host "Testing executable..."
 & .\dist\TacviewLogAnalyzer.exe --help
