@@ -122,6 +122,12 @@
       >
         Kills ↓
       </button>
+      <button type="button" data-sort="aakills" title="Sort by AA kills (desc)">
+        AA-Kills ↓
+      </button>
+      <button type="button" data-sort="agkills" title="Sort by AG kills (desc)">
+        A-G Kills ↓
+      </button>
       <button
         type="button"
         data-sort="name"
@@ -145,6 +151,8 @@
         data-pilot-name="{{ p.pilot or '' }}"
         data-pilot-shots="{{ p.totals.shots }}"
         data-pilot-kills="{{ p.totals.kills }}"
+        data-pilot-aakills="{{ p.totalsAA.kills }}"
+        data-pilot-agkills="{{ p.totalsAG.kills }}"
         data-default-index="{{ loop.index0 }}"
       >
         <summary>
@@ -157,11 +165,17 @@
             · Kills {{ p.totals.kills }}{% if p.totalsFriendly and
             p.totalsFriendly.kills %} / {{ p.totalsFriendly.kills }} FF{% endif
             %} · Misses {{ p.totals.misses }} · Flight {{ p.flightTime }}{% if
-            p.flightEnd %} · End {{ p.flightEnd }}{% endif %}</span
-          >
+            p.flightEnd %} · End {{ p.flightEnd }}{% endif %}
+            <br />
+            <span class="muted"
+              >A-A S/H/K: {{ p.totalsAA.shots }}/{{ p.totalsAA.hits }}/{{
+              p.totalsAA.kills }} · A-G S/H/K: {{ p.totalsAG.shots }}/{{
+              p.totalsAG.hits }}/{{ p.totalsAG.kills }}</span
+            >
+          </span>
         </summary>
 
-        <details open>
+        <details open style="margin-left: 1rem">
           <summary>Weapon summary ({{ p.byWeapon | length }})</summary>
           <table>
             <thead>
@@ -187,7 +201,7 @@
           </table>
         </details>
 
-        <details>
+        <details style="margin-left: 1rem">
           <summary>
             Events ({{ (p.chains | length) + (p.misses | length) }})
           </summary>
@@ -196,11 +210,13 @@
               <tr>
                 <th>ShotT</th>
                 <th>Weapon</th>
-                <th>WeaponID</th>
+                <!--<th>WeaponID</th>-->
                 <th>Target</th>
                 <th>HitT</th>
                 <th>KillT</th>
+                <th>Extra Kills</th>
                 <th>Flags</th>
+                <th>Domain</th>
               </tr>
             </thead>
             <tbody>
@@ -210,7 +226,7 @@
                   {{ c.shotStr or ('%.2f'|format(c.shotT)) }}
                 </td>
                 <td>{{ c.weapon }}</td>
-                <td>{{ c.weaponId }}</td>
+                <!--<td>{{ c.weaponId }}</td>-->
                 <td>{{ c.targetName or '' }}</td>
                 <td title="{{ c.hitT and '%.2f'|format(c.hitT) or '' }}">
                   {{ c.hitStr }}
@@ -219,9 +235,17 @@
                   {{ c.killStr }}
                 </td>
                 <td>
-                  {{ c.method }}{% if c.shooterMismatch %}, ShooterMismatch{%
-                  endif %}{% if c.friendly %}, Friendly{% endif %}
+                  {% if c.extraKillNames and c.extraKillNames|length > 0 %}{{
+                  c.extraKillNames|join(', ') }}{% endif %}
                 </td>
+                <td>
+                  <!--{{ c.method }}-->{% if c.intercepted %}Intercepted by {{
+                  c.interceptorName }}{% endif %}{% if c.shooterMismatch %}{% if
+                  c.intercepted %}, {% endif %}ShooterMismatch{% endif %}{% if
+                  c.friendly %}{% if c.intercepted or c.shooterMismatch %}, {%
+                  endif %}Friendly{% endif %}
+                </td>
+                <td>{{ c.domain }}</td>
               </tr>
               {% endfor %} {% for m in p.misses %}
               <tr>
@@ -229,7 +253,16 @@
                   {{ m.shotStr or ('%.2f'|format(m.shotT)) }}
                 </td>
                 <td>{{ m.weapon }}</td>
-                <td>{{ m.weaponId }}</td>
+                <!--<td>{{ m.weaponId }}</td>-->
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td>
+                  {% if m.intercepted %}Intercepted by {{ m.interceptorName }}{%
+                  else %}Miss{% endif %}
+                </td>
+                <td>{{ m.domain }}</td>
               </tr>
               {% endfor %}
             </tbody>
@@ -268,6 +301,12 @@
         const original = pilots.slice();
         function applySort(kind) {
           let sorted = pilots.slice();
+          // helper to safely parse numeric dataset values (defaults to 0)
+          const getNum = (el, key) => {
+            const v = el.dataset[key];
+            const n = Number(v);
+            return Number.isFinite(n) ? n : 0;
+          };
           if (kind === "shots") {
             sorted.sort(
               (a, b) =>
@@ -278,6 +317,18 @@
             sorted.sort(
               (a, b) =>
                 Number(b.dataset.pilotKills) - Number(a.dataset.pilotKills) ||
+                a.dataset.pilotName.localeCompare(b.dataset.pilotName)
+            );
+          } else if (kind === "aakills") {
+            sorted.sort(
+              (a, b) =>
+                getNum(b, "pilotAakills") - getNum(a, "pilotAakills") ||
+                a.dataset.pilotName.localeCompare(b.dataset.pilotName)
+            );
+          } else if (kind === "agkills") {
+            sorted.sort(
+              (a, b) =>
+                getNum(b, "pilotAgkills") - getNum(a, "pilotAgkills") ||
                 a.dataset.pilotName.localeCompare(b.dataset.pilotName)
             );
           } else if (kind === "name") {

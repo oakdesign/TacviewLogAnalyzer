@@ -130,3 +130,35 @@ def has_pilot(obj: Optional[ObjectInfo]) -> bool:
     if obj.pilot is None:
         return False
     return obj.pilot.strip() != ""
+
+
+def extract_human_pilots(events: list[EventRecord], mission: Mission | None = None) -> set[str]:
+    """Extract all human pilots from events based on HasEnteredTheArea events and MainAircraftID.
+    
+    Logic:
+    1. Find all HasEnteredTheArea events with Pilot on PrimaryObject
+    2. Add MainAircraftID pilot from mission (server flight special case)
+    3. Return unique set of pilot names (excluding empty/None)
+    """
+    pilots: set[str] = set()
+    
+    # Method 1: HasEnteredTheArea events with pilot
+    for event in events:
+        if (event.action == Action.HAS_ENTERED_THE_AREA and 
+            event.primary and 
+            event.primary.pilot and 
+            event.primary.pilot.strip()):
+            pilots.add(event.primary.pilot.strip())
+    
+    # Method 2: MainAircraftID from mission (server flight)
+    if mission and mission.main_aircraft_id is not None:
+        # Find the pilot associated with the main aircraft ID
+        for event in events:
+            if (event.primary and 
+                event.primary.id == mission.main_aircraft_id and 
+                event.primary.pilot and 
+                event.primary.pilot.strip()):
+                pilots.add(event.primary.pilot.strip())
+                break  # Found the main aircraft pilot
+    
+    return pilots

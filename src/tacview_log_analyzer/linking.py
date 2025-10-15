@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
 from .models import Action, EventRecord, ObjectInfo
@@ -46,6 +46,12 @@ class Chain:
     kill: Optional[Kill] = None
     method: str = "deterministic"  # or "heuristic" later
     shooter_consistent: bool = True
+    # Additional kills attributed to area-effect (e.g., bomb) beyond primary kill
+    extra_kills: list[Kill] = field(default_factory=list)
+    # Interception tracking for A-G weapons shot down by enemy missiles
+    intercepted: bool = False
+    interceptor_name: Optional[str] = None
+    interception_time: Optional[float] = None
 
 
 def _mk_shot(e: EventRecord) -> Optional[Shot]:
@@ -95,27 +101,84 @@ def _mk_kill(e: EventRecord) -> Optional[Kill]:
     return Kill(event=e, time=e.time, target_id=target_id, killer_pilot=killer_pilot)
 
 
+@dataclass(slots=True) 
+class Interception:
+    """Represents an A-G weapon being intercepted by enemy missiles."""
+    event: EventRecord
+    time: float
+    weapon_id: Optional[int]  # ID of intercepted A-G weapon
+    interceptor_name: str  # Name of intercepting missile/system
+    pilot: str  # Pilot who fired the intercepted weapon
+
+
+def _mk_interception(e: EventRecord) -> Optional[Interception]:
+    """Detect A-G weapon interceptions.
+    
+    Pattern: HasBeenHitBy event where:
+    - PrimaryObject: Enemy missile (interceptor) 
+    - SecondaryObject: A-G weapon (AGM, GBU, etc.)
+    - ParentObject: Aircraft with pilot (who fired the A-G weapon)
+    """
+    if (e.action != Action.HAS_BEEN_HIT_BY or 
+        not e.primary or not e.secondary or not e.parent_object or
+        not has_pilot(e.parent_object)):
+        return None
+    
+    # Check if secondary object (the weapon being hit) is an A-G weapon type
+    weapon_name = (e.secondary.name or "").upper()
+    weapon_type = (e.secondary.type or "").lower()
+    
+    # A-G weapon indicators (bombs, missiles targeting ground)
+    ag_weapon_names = {"AGM", "GBU", "JDAM", "JSOW", "SDB", "HARM", "HELLFIRE"}
+    is_ag_weapon = (weapon_type == "missile" and 
+                   any(ag_name in weapon_name for ag_name in ag_weapon_names))
+    
+    # Check if primary (interceptor) is an enemy missile
+    interceptor_type = (e.primary.type or "").lower()  
+    interceptor_coalition = (e.primary.coalition or "").strip()
+    weapon_coalition = (e.secondary.coalition or "").strip()
+    
+    is_enemy_interceptor = (interceptor_type == "missile" and 
+                          interceptor_coalition != weapon_coalition and
+                          interceptor_coalition and weapon_coalition)
+    
+    if is_ag_weapon and is_enemy_interceptor:
+        return Interception(
+            event=e,
+            time=e.time,
+            weapon_id=e.secondary.id,
+            interceptor_name=e.primary.name or "Unknown",
+            pilot=(e.parent_object.pilot or "").strip()
+        )
+    
+    return None
+
+
 def extract_shots_hits_kills(events: List[EventRecord]):
     shots: List[Shot] = []
     hits: List[Hit] = []
     kills: List[Kill] = []
+    interceptions: List[Interception] = []
     for e in events:
         s = _mk_shot(e)
         if s:
             shots.append(s)
-            continue
         h = _mk_hit(e)
         if h:
             hits.append(h)
-            continue
         k = _mk_kill(e)
         if k:
             kills.append(k)
+        i = _mk_interception(e)
+        if i:
+            interceptions.append(i)
+        # Note: removed continue statements to allow events to be classified as multiple types
     # sort by time to enable deterministic nearest-previous search
     shots.sort(key=lambda x: x.time)
     hits.sort(key=lambda x: x.time)
     kills.sort(key=lambda x: x.time)
-    return shots, hits, kills
+    interceptions.sort(key=lambda x: x.time)
+    return shots, hits, kills, interceptions
 
 
 def link_events_deterministic(
@@ -132,7 +195,7 @@ def link_events_deterministic(
     - shooter_consistent is set False when hit.parent_object.id != shot.primary.id.
     """
 
-    shots, hits, kills = extract_shots_hits_kills(events)
+    shots, hits, kills, interceptions = extract_shots_hits_kills(events)
 
     # Index shots by weapon_id for quick lookup
     shots_by_weapon: Dict[int, List[Shot]] = {}
@@ -338,7 +401,7 @@ def link_events_heuristic(
     - Mark method="heuristic".
     """
 
-    shots, hits, kills = extract_shots_hits_kills(events)
+    shots, hits, kills, interceptions = extract_shots_hits_kills(events)
 
     # Index shots per pilot for quick time-based search
     shots_by_pilot: Dict[str, List[Shot]] = {}
@@ -474,7 +537,7 @@ def link_events_combined(
     all_chains = d_chains + h_chains
 
     # Compute final leftovers based on events not used by any chain
-    shots_all, hits_all, kills_all = extract_shots_hits_kills(events)
+    shots_all, hits_all, kills_all, interceptions_all = extract_shots_hits_kills(events)
     used_shot_ids = {id(c.shot.event) for c in all_chains if c.shot is not None}
     used_hit_ids = {id(c.hit.event) for c in all_chains if c.hit is not None}
     used_kill_ids = {id(c.kill.event) for c in all_chains if c.kill is not None}
@@ -483,6 +546,124 @@ def link_events_combined(
     final_left_hits = [h for h in hits_all if id(h.event) not in used_hit_ids]
     final_left_kills = [k for k in kills_all if id(k.event) not in used_kill_ids]
 
+    # --- Area-effect extra kill attribution (bomb / precision weapon splash) ---
+    # Extended rules:
+    #  - Consider shots with weapon_type == 'bomb' OR weapon_name containing tokens typical for precision A-G munitions
+    #    (JDAM, GBU, SDB) as area-effect capable.
+    #  - Allow a small time tolerance (e.g., <= 0.15s) between primary kill time and secondary destroys.
+    #  - Use haversine distance threshold (default ~120m) instead of simple degree box for proximity.
+    #  - Skip events already linked as primary kills.
+    from math import asin, cos, radians, sin, sqrt
+
+    area_tokens = ["gbu", "jdam", "sdb", "agm"]
+    time_tol = 0.15  # seconds
+    dist_m_threshold = 120.0  # meters
+
+    def _is_area_effect_chain(c: Chain) -> bool:
+        wt = (c.shot.weapon_type or "").lower()
+        wn = (c.shot.weapon_name or "").lower()
+        if wt == "bomb":
+            return True
+        return any(tok in wn for tok in area_tokens)
+
+    def _haversine_m(lat1, lon1, lat2, lon2):
+        # Earth radius meters
+        R = 6371000.0
+        dlat = radians(lat2 - lat1)
+        dlon = radians(lon2 - lon1)
+        a = sin(dlat/2)**2 + cos(radians(lat1))*cos(radians(lat2))*sin(dlon/2)**2
+        cang = 2 * asin(min(1.0, sqrt(a)))
+        return R * cang
+
+    # Pre-collect raw destroy events (including those without pilot in secondary)
+    destroy_events: List[EventRecord] = [e for e in events if e.action == Action.HAS_BEEN_DESTROYED]
+    # Simple proximity checker in lat/long degrees (rough)
+    def _near(e1: EventRecord, e2: EventRecord) -> bool:
+        if not e1.location or not e2.location:
+            return False
+        d = _haversine_m(e1.location.latitude, e1.location.longitude, e2.location.latitude, e2.location.longitude)
+        return d <= dist_m_threshold
+
+    kill_event_ids_used = {id(c.kill.event) for c in all_chains if c.kill is not None}
+    for c in all_chains:
+        if not _is_area_effect_chain(c) or c.kill is None:
+            continue
+        base_kill_evt = c.kill.event
+        base_time = base_kill_evt.time
+        # gather other destroys within time tolerance & proximity
+        for e in destroy_events:
+            if e is base_kill_evt:
+                continue
+            if abs(e.time - base_time) > time_tol:
+                continue
+            if not _near(base_kill_evt, e):
+                continue
+            # avoid re-attributing kills already linked via other chains' primary kill
+            if id(e) in kill_event_ids_used:
+                continue
+            # fabricate a Kill object referencing same shooter pilot (if available) or empty
+            kp = c.shot.shooter_pilot
+            extra = Kill(event=e, time=e.time, target_id=e.primary.id if e.primary else None, killer_pilot=kp)
+            c.extra_kills.append(extra)
+            kill_event_ids_used.add(id(e))
+
+    # Process interceptions - link intercepted A-G weapons to existing chains
+    cleared_hit_event_ids = _process_interceptions(all_chains, interceptions_all)
+    
+    # Recalculate final leftovers AFTER interception processing
+    # Include cleared hit events as "used" to prevent them from appearing in misses
+    used_shot_ids = {id(c.shot.event) for c in all_chains if c.shot is not None}
+    used_hit_ids = {id(c.hit.event) for c in all_chains if c.hit is not None} | cleared_hit_event_ids
+    used_kill_ids = {id(c.kill.event) for c in all_chains if c.kill is not None}
+    
+    final_left_shots = [s for s in shots_all if id(s.event) not in used_shot_ids]
+    final_left_hits = [h for h in hits_all if id(h.event) not in used_hit_ids]
+    final_left_kills = [k for k in kills_all if id(k.event) not in used_kill_ids]
+
     return all_chains, final_left_shots, final_left_hits, final_left_kills
+
+
+def _process_interceptions(chains: List[Chain], interceptions: List[Interception]) -> set[int]:
+    """Link interceptions to existing chains based on weapon ID and pilot matching.
+    Returns set of hit event IDs that were cleared due to interception."""
+    # Index chains by weapon ID for quick lookup
+    chains_by_weapon: Dict[int, List[Chain]] = {}
+    for c in chains:
+        if c.shot.weapon_id is not None:
+            chains_by_weapon.setdefault(c.shot.weapon_id, []).append(c)
+    
+    # Track hit events that get cleared due to interception
+    cleared_hit_event_ids: set[int] = set()
+    
+    # For each interception, find matching chain and mark as intercepted
+    for interception in interceptions:
+        if interception.weapon_id is None:
+            continue
+        
+        matching_chains = chains_by_weapon.get(interception.weapon_id, [])
+        for chain in matching_chains:
+            # Verify pilot matches and interception time is after shot time
+            if (chain.shot.shooter_pilot == interception.pilot and
+                interception.time >= chain.shot.time):
+                
+                # Mark chain as intercepted and clear hit/kill data
+                # The weapon was destroyed before reaching its intended target
+                chain.intercepted = True
+                chain.interceptor_name = interception.interceptor_name
+                chain.interception_time = interception.time
+                
+                # Track the hit event ID before clearing it
+                if chain.hit is not None:
+                    cleared_hit_event_ids.add(id(chain.hit.event))
+                
+                # Clear hit and kill data since weapon never reached intended target
+                chain.hit = None
+                chain.kill = None
+                chain.extra_kills = []  # No splash damage if intercepted before impact
+                
+                # Only link to first matching chain to avoid duplicates
+                break
+    
+    return cleared_hit_event_ids
 
 

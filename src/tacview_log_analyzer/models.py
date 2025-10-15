@@ -12,6 +12,7 @@ class Action(str, Enum):
     HAS_BEEN_DESTROYED = "HasBeenDestroyed"
     HAS_TAKEN_OFF = "HasTakenOff"
     HAS_LANDED = "HasLanded"
+    HAS_ENTERED_THE_AREA = "HasEnteredTheArea"
 
 
 @dataclass(slots=True)
