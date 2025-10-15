@@ -33,7 +33,7 @@
     {
       "label": "Build exe (PyInstaller)",
       "type": "shell",
-      "command": ".venv\\Scripts\\pyinstaller.exe --noconfirm --onefile --name TacviewLogAnalyzer --console --paths src src/tacview_log_analyzer/cli.py",
+      "command": ".venv\\Scripts\\pyinstaller.exe --noconfirm --onefile --name TacviewLogAnalyzer --console --paths src standalone_main.py",
       "problemMatcher": []
     }
   ]

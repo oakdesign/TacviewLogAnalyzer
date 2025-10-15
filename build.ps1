@@ -6,7 +6,7 @@ $ErrorActionPreference = 'Stop'
 
 if ($Clean) {
   Write-Host "Cleaning build artifacts..."
-  Remove-Item -Recurse -Force -ErrorAction SilentlyContinue build,dist,.build,*.spec
+  Remove-Item -Recurse -Force -ErrorAction SilentlyContinue build, dist, .build, *.spec
 }
 
 # Ensure venv
@@ -27,6 +27,18 @@ Write-Host "Running tests..."
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "Building standalone exe..."
-& $pyinstaller --noconfirm --onefile --name TacviewLogAnalyzer --console --paths src src/tacview_log_analyzer/cli.py
+& $pyinstaller --noconfirm --onefile --name TacviewLogAnalyzer --console --paths src standalone_main.py
+
+Write-Host "Testing executable..."
+& .\dist\TacviewLogAnalyzer.exe --help
+if ($LASTEXITCODE -eq 0) {
+  $size = (Get-Item ".\dist\TacviewLogAnalyzer.exe").Length
+  $sizeMB = [Math]::Round($size / 1MB, 1)
+  Write-Host "✅ Build successful! Size: $sizeMB MB" -ForegroundColor Green
+}
+else {
+  Write-Host "❌ Executable test failed!" -ForegroundColor Red
+  exit 1
+}
 
 Write-Host "Done. See dist/ folder."
