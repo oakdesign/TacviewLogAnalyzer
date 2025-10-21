@@ -45,6 +45,7 @@ This is a fully functional example of a custom HTML template that demonstrates h
 The template receives these Jinja2 variables from the application:
 
 #### Top-Level Variables
+
 - `vm` - Complete view model with all pilot and mission data (see structure below)
 - `xml` - String path to the currently loaded XML file (e.g., `"C:\logs\mission.xml"`)
 - `error` - Error message string if loading failed, `None` if successful
@@ -58,7 +59,7 @@ vm = {
     "pilots": [
         {
             "pilot": "PilotCallsign",                    # Pilot callsign/name
-            
+
             # Overall statistics totals
             "totals": {
                 "shots": 12,                            # Total shots fired
@@ -66,33 +67,33 @@ vm = {
                 "kills": 5,                             # Total kills
                 "misses": 4                             # Total misses
             },
-            
+
             # Friendly fire statistics
             "totalsFriendly": {
                 "shots": 1,                             # Friendly fire shots
                 "hits": 0,                              # Friendly fire hits
                 "kills": 0                              # Friendly fire kills
             },
-            
+
             # Air-to-Air domain statistics
             "totalsAA": {
                 "shots": 8,                             # A-A shots fired
                 "hits": 6,                              # A-A hits
                 "kills": 4                              # A-A kills
             },
-            
-            # Air-to-Ground domain statistics  
+
+            # Air-to-Ground domain statistics
             "totalsAG": {
                 "shots": 4,                             # A-G shots fired
                 "hits": 2,                              # A-G hits
                 "kills": 1                              # A-G kills
             },
-            
+
             # Flight information
             "flightTime": "01:23:45",                   # Formatted flight time (HH:MM:SS)
             "flightTimeSec": 5025.0,                    # Flight time in seconds
             "flightEnd": "Landed",                      # How flight ended: "Landed", "Shot down", "Ejected", etc.
-            
+
             # Weapon breakdown per pilot
             "byWeapon": [
                 {
@@ -104,7 +105,7 @@ vm = {
                 },
                 # ... more weapons
             ],
-            
+
             # Individual engagement chains (successful shots)
             "chains": [
                 {
@@ -115,7 +116,7 @@ vm = {
                     "targetName": "MiG-29A Fulcrum",    # Target name if hit/killed
                     "hitT": 1240.2,                     # Hit time (seconds) or None
                     "hitStr": "20:40",                  # Hit time formatted or ""
-                    "killT": 1240.2,                    # Kill time (seconds) or None  
+                    "killT": 1240.2,                    # Kill time (seconds) or None
                     "killStr": "20:40",                 # Kill time formatted or ""
                     "method": "deterministic",          # Linking method: "deterministic" or "heuristic"
                     "shooterMismatch": False,           # Boolean: shooter data inconsistent
@@ -130,7 +131,7 @@ vm = {
                 },
                 # ... more engagement chains
             ],
-            
+
             # Miss events (shots that didn't hit anything)
             "misses": [
                 {
@@ -145,13 +146,13 @@ vm = {
         },
         # ... more pilots
     ],
-    
+
     # Mission overview statistics
     "overview": {
         "humanPilots": 24,                              # Total number of human pilots
         "landedPilots": 20,                             # Number who landed safely
         "ejectedOrShotPilots": 4,                       # Number ejected or shot down
-        
+
         # Overall weapon usage statistics across all pilots
         "shotsByWeapon": [
             {
@@ -219,12 +220,14 @@ vm = {
 ```
 
 #### Domain Classification
+
 - **AA (Air-to-Air)**: Weapons targeting aircraft or helicopters (AIM-120, AIM-9, etc.)
 - **AG (Air-to-Ground)**: Weapons targeting ground/naval targets (AGM-65, GBU-54, etc.)
 
 #### Special Features
+
 - **Interception Detection**: When A-G weapons are shot down by enemy missiles before reaching target
-- **Friendly Fire Tracking**: Automatic detection of same-coalition engagements  
+- **Friendly Fire Tracking**: Automatic detection of same-coalition engagements
 - **Extra Kills**: Multi-target weapons (splash damage) tracked separately
 - **Flight Outcomes**: Detailed tracking of how each pilot's mission ended
 
