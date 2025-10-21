@@ -1,48 +1,157 @@
-# Tacview Log Analyzer (skeleton)
+# Tacview Log Analyzer
 
-A Python project to parse Tacview XML logs and generate statistics. This is the base scaffolding with CLI, packaging, tests, and Windows build hooks. Business logic will be added later.
+A comprehensive tool to parse Tacview XML logs and generate detailed combat statistics and analysis. Features advanced weapon tracking, pilot performance metrics, air-to-air kill analysis, and interception detection.
 
-## Features (now)
+## Features
 
-- src/ layout Python package: `tacview_log_analyzer`
-- CLI entry: `tacview-analyze`
-- Tests via pytest
-- VS Code tasks and debug configs
-- PyInstaller task to build a standalone `.exe`
+- **Comprehensive Statistics**: Pilot performance with shots, hits, kills, and flight times
+- **Weapon Analysis**: Detailed breakdown by weapon type and effectiveness
+- **Air-to-Air Combat**: Specialized A-A kill tracking grouped by target aircraft type  
+- **Interception Detection**: Identifies when A-G weapons are shot down before reaching targets
+- **Web Interface**: Interactive browser-based analysis dashboard
+- **Standalone Executable**: No Python installation required for end users
+- **CLI Tools**: Command-line interface for automated analysis
+- **Multiple Output Formats**: Summary reports, detailed chains, and web UI
 
-## Quick start (Windows PowerShell)
+## End-User Guide (Standalone Executable)
+
+### Download and Setup
+
+1. **Download** the latest `TacviewLogAnalyzer.exe` from the [GitHub Releases](https://github.com/oakdesign/TacviewLogAnalyzer/releases) page
+2. **No installation required** - the .exe is completely standalone
+3. **Place the executable** in any folder of your choice
+
+### Basic Usage
+
+Open Command Prompt or PowerShell in the folder containing the .exe and run:
+
+```cmd
+# Generate comprehensive summary report
+TacviewLogAnalyzer.exe --summary your_tacview_log.xml
+
+# Launch interactive web interface (opens in browser)
+TacviewLogAnalyzer.exe --web your_tacview_log.xml
+
+# View detailed engagement chains
+TacviewLogAnalyzer.exe --chains-combined your_tacview_log.xml
+
+# Show all available options
+TacviewLogAnalyzer.exe --help
+```
+
+### Understanding the Output
+
+**Summary Report includes:**
+- **Pilot Statistics**: Individual pilot performance with shots/hits/kills and flight time
+- **Weapon Breakdown**: Shots fired per weapon type for each pilot
+- **Flight Outcomes**: How each pilot's flight ended (Landed, Shot down, Ejected, etc.)
+- **A-A Kills by Target**: Air-to-air kills grouped by target aircraft type (e.g., "MiG-29S Fulcrum-C 12 kills")
+
+**Web Interface provides:**
+- Interactive browsing of all engagement data
+- Sortable tables and detailed event information
+- Visual timeline of combat events
+- Export capabilities for further analysis
+
+### Example Usage
+
+```cmd
+# Analyze a BMS mission log
+TacviewLogAnalyzer.exe --summary "2025-10-22_Mission.xml"
+
+# Launch web interface for detailed analysis
+TacviewLogAnalyzer.exe --web "2025-10-22_Mission.xml"
+```
+
+The web interface will automatically open in your default browser at `http://localhost:8000`.
+
+### System Requirements
+
+- **Operating System**: Windows 10/11 (64-bit)
+- **No additional software required** - the executable is completely self-contained
+- **Memory**: Sufficient RAM to load XML files (typically 100MB+ for large mission logs)
+- **Disk Space**: Minimal (executable is ~15-20MB)
+
+### Troubleshooting
+
+**If the executable doesn't run:**
+- Ensure you're using a 64-bit Windows system
+- Try running from Command Prompt to see any error messages
+- Check that your antivirus isn't blocking the executable
+
+**If the web interface doesn't open:**
+- Manually navigate to `http://localhost:8000` in your browser
+- Ensure no other application is using port 8000
+- Check Windows Firewall settings if needed
+
+**For large XML files:**
+- The tool can handle files up to several hundred MB
+- Processing time scales with file size and number of events
+- Consider using `--summary` mode for faster analysis of very large files
+
+## Developer Guide
+
+### Development Setup (Windows PowerShell)
 
 ```powershell
-# 1) Create & activate virtualenv
+# 1) Create & activate virtual environment
 python -m venv .venv
-. .\.venv\Scripts\Activate.ps1
+.\.venv\Scripts\Activate.ps1
 
-# 2) Install dev dependencies and project in editable mode
+# 2) Install development dependencies
 pip install -U pip
 pip install -e .[dev]
 
 # 3) Run tests
 pytest -q
 
-# 4) Use CLI (skeleton)
+# 4) Run from source
 python -m tacview_log_analyzer --help
-python -m tacview_log_analyzer 2025-09-06_18-48-30.xml
+python -m tacview_log_analyzer --summary your_tacview_log.xml
 
-# 5) Build one-file exe (outputs to dist/)
-pyinstaller --noconfirm --onefile --name TacviewLogAnalyzer --console --paths src src/tacview_log_analyzer/cli.py
+# 5) Build standalone executable
+pyinstaller TacviewLogAnalyzer.spec
+# Output: dist/TacviewLogAnalyzer.exe
 ```
 
-## Project layout
+### Building Releases
 
-- `src/tacview_log_analyzer/cli.py` – CLI entry point (no business logic yet)
-- `src/tacview_log_analyzer/__init__.py` – package metadata
-- `tests/` – minimal smoke tests
-- `.vscode/` – tasks and debug configs
-- `pyproject.toml` – packaging config
+The project uses GitHub Actions for automated building:
+- **Push to master**: Automatically builds and creates release artifacts
+- **Manual releases**: Download from GitHub Releases page
+- **Local builds**: Use `pyinstaller TacviewLogAnalyzer.spec` for development builds
 
-## Next steps
+## Project Structure
 
-- Define XML schema/data points and write parsing services
-- Add domain models and statistics calculators
-- Wire CLI options to run parsing and output reports
-- Optional: add GUI (e.g., `PySide6`/`Tkinter`) atop service layer
+- `src/tacview_log_analyzer/` – Main package
+  - `cli.py` – Command-line interface and summary reports
+  - `parser.py` – Tacview XML parsing logic
+  - `linking.py` – Event linking and chain analysis
+  - `stats.py` – Statistics computation and rendering
+  - `viewmodel.py` – Data transformation for web UI
+  - `webapp.py` – FastAPI web application
+  - `webui/` – HTML templates and web assets
+- `tests/` – Unit tests and test data
+- `.github/workflows/` – GitHub Actions CI/CD
+- `TacviewLogAnalyzer.spec` – PyInstaller build configuration
+
+## Key Features Explained
+
+### Air-to-Air Kill Analysis
+Groups A-A kills by target aircraft type using sophisticated weapon classification:
+- Automatically detects A-A vs A-G weapons based on target type and weapon characteristics
+- Provides cumulative counts (e.g., "MiG-29S Fulcrum-C 12 kills")
+- Excludes ground targets and non-combat events
+
+### Interception Detection
+Identifies when air-to-ground weapons are intercepted before reaching their targets:
+- Tracks AGM, GBU, JDAM, and other A-G weapons
+- Detects when they are shot down by enemy missiles
+- Classifies as "intercepted" rather than miss or hit
+
+### Web Interface
+Provides comprehensive analysis dashboard:
+- Real-time event browsing and filtering
+- Interactive engagement chains
+- Sortable pilot and weapon statistics
+- Export capabilities for detailed analysis
