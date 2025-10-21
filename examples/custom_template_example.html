@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tacview Log Analyzer - Custom Template Example</title>
+    <style>
+      /* 
+      ==========================================
+      CUSTOM TEMPLATE EXAMPLE
+      ==========================================
+      
+      This is an example custom template for Tacview Log Analyzer.
+      To use this template:
+      1. Copy this file to the same directory as TacviewLogAnalyzer.exe
+      2. Rename it to "index.html"
+      3. Customize the styling and layout as desired
+      4. Run TacviewLogAnalyzer.exe --web your_file.xml
+      
+      The template uses Jinja2 syntax for data binding.
+      All data variables (vm.pilots, vm.overview, etc.) remain the same.
+      Only the HTML structure and CSS styling can be customized.
+      ==========================================
+      */
+      
+      /* Dark theme with terminal-style aesthetics */
+      body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #00ff41;
+        font-family: 'Courier New', monospace;
+        margin: 0;
+        padding: 1rem;
+        min-height: 100vh;
+      }
+      
+      /* Custom notice banner */
+      .custom-notice {
+        background: linear-gradient(45deg, #ff6b35, #f7931e);
+        color: #000;
+        padding: 0.8rem;
+        text-align: center;
+        font-weight: bold;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      }
+      
+      h1 {
+        color: #00ffff;
+        text-shadow: 0 0 10px #00ffff;
+        text-align: center;
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+      }
+      
+      h2, h3 {
+        color: #00ffff;
+        text-shadow: 0 0 5px #00ffff;
+      }
+      
+      /* Form styling */
+      form {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+      }
+      
+      input[type="text"] {
+        background: #1a1a1a;
+        color: #00ff41;
+        border: 2px solid #00ff41;
+        padding: 0.5rem;
+        border-radius: 4px;
+        font-family: inherit;
+      }
+      
+      button {
+        background: linear-gradient(45deg, #00ff41, #00cc33);
+        color: #000;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: all 0.3s ease;
+      }
+      
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 255, 65, 0.3);
+      }
+      
+      /* Pilot section styling */
+      .pilot {
+        background: rgba(0, 0, 0, 0.4);
+        margin: 0.8rem 0;
+        border-radius: 8px;
+        border-left: 4px solid #00ff41;
+      }
+      
+      summary {
+        cursor: pointer;
+        font-weight: 600;
+        padding: 0.8rem;
+        transition: background 0.3s ease;
+      }
+      
+      summary:hover {
+        background: rgba(0, 255, 65, 0.1);
+      }
+      
+      .counts {
+        font-size: 0.9rem;
+        color: #ffff00;
+        margin-left: 0.5rem;
+      }
+      
+      .muted {
+        color: #888;
+      }
+      
+      /* Table styling */
+      table {
+        border-collapse: collapse;
+        margin: 0.5rem 0;
+        width: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      
+      th, td {
+        border: 1px solid #333;
+        padding: 0.5rem;
+        text-align: left;
+      }
+      
+      th {
+        background: linear-gradient(45deg, #333, #555);
+        color: #00ffff;
+        font-weight: bold;
+      }
+      
+      tr:nth-child(even) {
+        background: rgba(255, 255, 255, 0.05);
+      }
+      
+      tr:hover {
+        background: rgba(0, 255, 65, 0.1);
+      }
+      
+      /* Code styling */
+      code {
+        background: #1a1a1a;
+        color: #00ff41;
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        border: 1px solid #333;
+      }
+      
+      /* Error styling */
+      .error {
+        color: #ff4444;
+        background: rgba(255, 68, 68, 0.1);
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #ff4444;
+      }
+      
+      /* Sorting controls */
+      #pilot-sorting {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+      }
+      
+      #pilot-sorting button {
+        margin: 0.2rem;
+        font-size: 0.9rem;
+      }
+      
+      /* Responsive design */
+      @media (max-width: 768px) {
+        body {
+          padding: 0.5rem;
+        }
+        
+        h1 {
+          font-size: 2rem;
+        }
+        
+        table {
+          font-size: 0.8rem;
+        }
+        
+        input[type="text"] {
+          width: 100%;
+          box-sizing: border-box;
+        }
+      }
+      
+      /* Animation for loading */
+      @keyframes glow {
+        0%, 100% { text-shadow: 0 0 5px #00ffff; }
+        50% { text-shadow: 0 0 20px #00ffff, 0 0 30px #00ffff; }
+      }
+      
+      .glow-animation {
+        animation: glow 2s ease-in-out infinite;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Custom notice to show template is active -->
+    <div class="custom-notice">
+      🚀 CUSTOM TEMPLATE ACTIVE! 🚀<br>
+      This is an example of how you can customize the Tacview Log Analyzer interface.
+    </div>
+    
+    <h1 class="glow-animation">🎯 Tacview Log Analyzer</h1>
+    
+    <!-- File loading form -->
+    <form method="get">
+      <label>
+        📁 XML file path:
+        <input type="text" name="xml" value="{{ xml or '' }}" size="80" placeholder="Enter path to your Tacview XML file..." />
+      </label>
+      <button type="submit">🔍 Load & Analyze</button>
+    </form>
+
+    {% if error %}
+    <div class="error">❌ {{ error }}</div>
+    {% endif %}
+    
+    {% if hasData %}
+    <p class="muted">✅ Loaded: <code>{{ xml }}</code></p>
+
+    {% if vm.overview %}
+    <h2>📊 Mission Overview</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>👨‍✈️ Human Pilots</th>
+          <th>🛬 Landed</th>
+          <th>💥 Ejected / Shot down</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>{{ vm.overview.humanPilots }}</td>
+          <td>{{ vm.overview.landedPilots }}</td>
+          <td>{{ vm.overview.ejectedOrShotPilots }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    {% if vm.overview.shotsByWeapon %}
+    <h3>🚀 Shots / Hits / Kills by Weapon</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>🔫 Weapon</th>
+          <th>🎯 Shots</th>
+          <th>💥 Hits</th>
+          <th>☠️ Kills</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in vm.overview.shotsByWeapon %}
+        <tr>
+          <td>{{ row.weapon }}</td>
+          <td>{{ row.shots }}</td>
+          <td>{{ row.hits }}</td>
+          <td>{{ row.kills }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    {% endif %}
+
+    <!-- Pilot sorting controls -->
+    <div id="pilot-sorting" style="display: none; gap: 0.5rem; flex-wrap: wrap">
+      <strong>🔄 Sort pilots:</strong>
+      <button type="button" data-sort="shots" title="Sort by total shots (desc)">🎯 Shots ↓</button>
+      <button type="button" data-sort="kills" title="Sort by total kills (desc)">☠️ Kills ↓</button>
+      <button type="button" data-sort="aakills" title="Sort by AA kills (desc)">✈️ AA-Kills ↓</button>
+      <button type="button" data-sort="agkills" title="Sort by AG kills (desc)">🏗️ A-G Kills ↓</button>
+      <button type="button" data-sort="name" title="Sort alphabetically by pilot name">📝 Name A→Z</button>
+      <button type="button" data-sort="default" title="Original order (shots desc)">🔄 Default</button>
+    </div>
+
+    <!-- Pilot details -->
+    <div id="pilots-container">
+      {% for p in vm.pilots %}
+      <details
+        class="pilot"
+        data-pilot-name="{{ p.pilot or '' }}"
+        data-pilot-shots="{{ p.totals.shots }}"
+        data-pilot-kills="{{ p.totals.kills }}"
+        data-pilot-aakills="{{ p.totalsAA.kills }}"
+        data-pilot-agkills="{{ p.totalsAG.kills }}"
+        data-default-index="{{ loop.index0 }}"
+      >
+        <summary>
+          👨‍✈️ {{ p.pilot or 'Unknown' }}
+          <span class="counts">
+            🎯 Shots {{ p.totals.shots }}{% if p.totalsFriendly and p.totalsFriendly.shots %} / {{ p.totalsFriendly.shots }} FF{% endif %}
+            · 💥 Hits {{ p.totals.hits }}{% if p.totalsFriendly and p.totalsFriendly.hits %} / {{ p.totalsFriendly.hits }} FF{% endif %}
+            · ☠️ Kills {{ p.totals.kills }}{% if p.totalsFriendly and p.totalsFriendly.kills %} / {{ p.totalsFriendly.kills }} FF{% endif %}
+            · ❌ Misses {{ p.totals.misses }}
+            · ⏱️ Flight {{ p.flightTime }}{% if p.flightEnd %} · 🏁 End {{ p.flightEnd }}{% endif %}
+            <br />
+            <span class="muted">
+              ✈️ A-A S/H/K: {{ p.totalsAA.shots }}/{{ p.totalsAA.hits }}/{{ p.totalsAA.kills }}
+              · 🏗️ A-G S/H/K: {{ p.totalsAG.shots }}/{{ p.totalsAG.hits }}/{{ p.totalsAG.kills }}
+            </span>
+          </span>
+        </summary>
+
+        <details open style="margin-left: 1rem">
+          <summary>🔫 Weapon summary ({{ p.byWeapon | length }})</summary>
+          <table>
+            <thead>
+              <tr>
+                <th>🚀 Weapon</th>
+                <th>🎯 Shots</th>
+                <th>💥 Hits</th>
+                <th>☠️ Kills</th>
+                <th>❌ Misses</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for w in p.byWeapon %}
+              <tr>
+                <td>{{ w.weapon }}</td>
+                <td>{{ w.shots }}</td>
+                <td>{{ w.hits }}</td>
+                <td>{{ w.kills }}</td>
+                <td>{{ w.misses }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </details>
+
+        <details style="margin-left: 1rem">
+          <summary>📋 Events ({{ (p.chains | length) + (p.misses | length) }})</summary>
+          <table>
+            <thead>
+              <tr>
+                <th>⏰ ShotT</th>
+                <th>🔫 Weapon</th>
+                <th>🎯 Target</th>
+                <th>💥 HitT</th>
+                <th>☠️ KillT</th>
+                <th>💀 Extra Kills</th>
+                <th>🏷️ Flags</th>
+                <th>🏁 Domain</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in p.chains %}
+              <tr>
+                <td title="{{ '%.2f'|format(c.shotT) }}">
+                  {{ c.shotStr or ('%.2f'|format(c.shotT)) }}
+                </td>
+                <td>{{ c.weapon }}</td>
+                <td>{{ c.targetName or '' }}</td>
+                <td title="{{ c.hitT and '%.2f'|format(c.hitT) or '' }}">
+                  {{ c.hitStr }}
+                </td>
+                <td title="{{ c.killT and '%.2f'|format(c.killT) or '' }}">
+                  {{ c.killStr }}
+                </td>
+                <td>
+                  {% if c.extraKillNames and c.extraKillNames|length > 0 %}
+                  {{ c.extraKillNames|join(', ') }}
+                  {% endif %}
+                </td>
+                <td>
+                  {% if c.intercepted %}🛡️ Intercepted by {{ c.interceptorName }}{% endif %}
+                  {% if c.shooterMismatch %}{% if c.intercepted %}, {% endif %}⚠️ ShooterMismatch{% endif %}
+                  {% if c.friendly %}{% if c.intercepted or c.shooterMismatch %}, {% endif %}🤝 Friendly{% endif %}
+                </td>
+                <td>{{ c.domain }}</td>
+              </tr>
+              {% endfor %}
+              {% for m in p.misses %}
+              <tr>
+                <td title="{{ '%.2f'|format(m.shotT) }}">
+                  {{ m.shotStr or ('%.2f'|format(m.shotT)) }}
+                </td>
+                <td>{{ m.weapon }}</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td>
+                  {% if m.intercepted %}🛡️ Intercepted by {{ m.interceptorName }}
+                  {% else %}❌ Miss{% endif %}
+                </td>
+                <td>{{ m.domain }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </details>
+      </details>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- JavaScript for sorting functionality (unchanged from original) -->
+    <script>
+      (function () {
+        const container = document.getElementById("pilots-container");
+        const bar = document.getElementById("pilot-sorting");
+        if (!container || !bar) return;
+        const pilots = Array.from(container.querySelectorAll("details.pilot"));
+        if (pilots.length === 0) return;
+        bar.style.display = "flex";
+        const original = pilots.slice();
+        
+        function applySort(kind) {
+          let sorted = pilots.slice();
+          // helper to safely parse numeric dataset values (defaults to 0)
+          const getNum = (el, key) => {
+            const v = el.dataset[key];
+            const n = Number(v);
+            return Number.isFinite(n) ? n : 0;
+          };
+          
+          if (kind === "shots") {
+            sorted.sort(
+              (a, b) =>
+                Number(b.dataset.pilotShots) - Number(a.dataset.pilotShots) ||
+                a.dataset.pilotName.localeCompare(b.dataset.pilotName)
+            );
+          } else if (kind === "kills") {
+            sorted.sort(
+              (a, b) =>
+                Number(b.dataset.pilotKills) - Number(a.dataset.pilotKills) ||
+                a.dataset.pilotName.localeCompare(b.dataset.pilotName)
+            );
+          } else if (kind === "aakills") {
+            sorted.sort(
+              (a, b) =>
+                getNum(b, "pilotAakills") - getNum(a, "pilotAakills") ||
+                a.dataset.pilotName.localeCompare(b.dataset.pilotName)
+            );
+          } else if (kind === "agkills") {
+            sorted.sort(
+              (a, b) =>
+                getNum(b, "pilotAgkills") - getNum(a, "pilotAgkills") ||
+                a.dataset.pilotName.localeCompare(b.dataset.pilotName)
+            );
+          } else if (kind === "name") {
+            sorted.sort((a, b) =>
+              a.dataset.pilotName.localeCompare(b.dataset.pilotName)
+            );
+          } else if (kind === "default") {
+            sorted = original.slice();
+          }
+          
+          // detach then append in order
+          const frag = document.createDocumentFragment();
+          sorted.forEach((el) => frag.appendChild(el));
+          container.innerHTML = "";
+          container.appendChild(frag);
+        }
+        
+        bar.addEventListener("click", (e) => {
+          const btn = e.target.closest("button[data-sort]");
+          if (!btn) return;
+          applySort(btn.dataset.sort);
+        });
+      })();
+    </script>
+  </body>
+</html>

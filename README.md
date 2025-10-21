@@ -39,6 +39,38 @@ TacviewLogAnalyzer.exe --chains-combined your_tacview_log.xml
 TacviewLogAnalyzer.exe --help
 ```
 
+### Custom Web Interface Templates
+
+**Advanced Feature**: You can customize the web interface appearance by providing your own HTML template:
+
+1. **Create custom template**: Copy the original `index.html` from inside the executable or create your own
+2. **Place alongside executable**: Save your custom template as `index.html` in the same folder as `TacviewLogAnalyzer.exe`
+3. **Launch normally**: The executable will automatically use your custom template instead of the built-in one
+
+```cmd
+# Example directory structure for custom template:
+MyAnalysisFolder/
+├── TacviewLogAnalyzer.exe
+├── index.html          <- Your custom template
+└── mission_log.xml
+
+# Run with custom template (automatically detected)
+TacviewLogAnalyzer.exe --web mission_log.xml
+```
+
+**Template Requirements:**
+- Must be valid HTML with Jinja2 template syntax
+- Use the same template variables as the original (`vm`, `xml`, `error`, `hasData`)
+- Include JavaScript for sorting functionality if desired
+- Can completely customize styling, colors, fonts, and layout
+
+**Example Template:**
+Download the [example custom template](examples/custom_template_example.html) from this repository to see:
+- Dark theme with terminal-style aesthetics
+- Custom colors and styling
+- Comprehensive comments explaining customization options
+- All functionality preserved from the original template
+
 ### Understanding the Output
 
 **Summary Report includes:**
@@ -88,6 +120,17 @@ The web interface will automatically open in your default browser at `http://loc
 - The tool can handle files up to several hundred MB
 - Processing time scales with file size and number of events
 - Consider using `--summary` mode for faster analysis of very large files
+
+**For custom templates:**
+- Ensure your `index.html` is in the same directory as the executable
+- Check browser console for JavaScript errors if sorting doesn't work
+- Use the [example template](examples/custom_template_example.html) as a starting point
+- Template must use valid HTML and Jinja2 syntax
+
+**Custom template issues:**
+- If your custom `index.html` causes errors, remove it to revert to the built-in template
+- Ensure your template uses proper Jinja2 syntax and includes required template variables
+- Test template changes incrementally to identify syntax errors
 
 ## Developer Guide
 
