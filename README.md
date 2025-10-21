@@ -22,6 +22,7 @@ A comprehensive tool to parse Tacview XML logs and generate detailed combat stat
 3. **Place the executable** in any folder of your choice
 
 ### Basic Usage
+Tacview load you acmi in Tacview and go to File->Export Flight Log and select to export as .xml
 
 Open Command Prompt or PowerShell in the folder containing the .exe and run:
 
