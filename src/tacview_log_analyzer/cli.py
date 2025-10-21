@@ -1,20 +1,19 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
-import socket
 import os
+import socket
+from pathlib import Path
 
 from . import __version__
-from .linking import (link_events_combined, link_events_deterministic,
-                      link_events_heuristic, render_chains, render_leftovers)
+from .linking import (extract_shots_hits_kills, link_events_combined,
+                      link_events_deterministic, link_events_heuristic,
+                      render_chains, render_leftovers)
 from .parser import parse_file
-from .stats import (
-    accumulate_pilot_stats,
-    render_pilot_stats,
-    compute_flight_time_by_pilot,
-    compute_flight_outcomes_by_pilot,
-)
+from .stats import (accumulate_pilot_stats, compute_aa_kills_by_target,
+                    compute_flight_outcomes_by_pilot,
+                    compute_flight_time_by_pilot, render_aa_kills_by_target,
+                    render_pilot_stats)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -154,6 +153,11 @@ def main(argv: list[str] | None = None) -> int:
         deb = parse_file(args.xml)
         stats = accumulate_pilot_stats(deb.events)
         outcomes = compute_flight_outcomes_by_pilot(deb.events)
+        # Get chains and shots for A-A kills analysis
+        chains, _, _, _ = link_events_combined(deb.events)
+        shots_all, _, _, _ = extract_shots_hits_kills(deb.events)
+        aa_kills = compute_aa_kills_by_target(chains, shots_all)
+        
         # derive ftimes for compatibility
         ftimes = {p: d for p, (d, _r) in outcomes.items()}
         # augment render with end reasons appended
@@ -168,6 +172,10 @@ def main(argv: list[str] | None = None) -> int:
                 line = f"{line} · FlightEnded {reason}"
             lines.append(line)
         print("\n".join(lines))
+        
+        # Add A-A kills by target
+        aa_summary = render_aa_kills_by_target(aa_kills)
+        print(aa_summary)
     elif args.chains:
         deb = parse_file(args.xml)
         chains, l_shots, l_hits, l_kills = link_events_deterministic(deb.events, consume=True)
