@@ -41,19 +41,87 @@
         padding: 0.1rem 0.3rem;
         border-radius: 3px;
       }
+      
+      /* File picker styles */
+      .file-picker {
+        background: #f9f9f9;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 1rem;
+        margin: 1rem 0;
+      }
+      .file-picker h3 {
+        margin-top: 0;
+        color: #333;
+      }
+      .btn {
+        padding: 0.5rem 1rem;
+        border: 1px solid #ccc;
+        background: white;
+        border-radius: 3px;
+        cursor: pointer;
+        text-decoration: none;
+        color: inherit;
+      }
+      .btn:hover {
+        background: #f0f0f0;
+      }
+      .btn-primary {
+        background: #007acc;
+        color: white;
+        border-color: #007acc;
+      }
+      .btn-primary:hover {
+        background: #005a99;
+      }
+      .loading {
+        color: #666;
+        font-style: italic;
+      }
     </style>
   </head>
   <body>
     <h1>Tacview Log Analyzer</h1>
-    <!-- Pilot sorting controls are client-side only; initial order is by shots desc from server. -->
-
-    <form method="get">
-      <label
-        >XML file path:
-        <input type="text" name="xml" value="{{ xml or '' }}" size="80"
-      /></label>
-      <button type="submit">Load</button>
-    </form>
+    
+    <!-- File Browser -->
+    <div class="file-picker">
+      <h3>📁 Select XML File</h3>
+      
+      <!-- File browser interface -->
+      <div style="margin-bottom: 1rem;">
+        <button type="button" class="btn btn-primary" onclick="showFileBrowser()">
+          📂 Browse Files
+        </button>
+        <span id="selectedFileName" style="margin-left: 1rem; color: #666;"></span>
+      </div>
+      
+      <!-- File browser popup -->
+      <div id="fileBrowserPopup" style="display: none; border: 1px solid #ccc; background: white; padding: 1rem; margin-top: 0.5rem;">
+        <div style="border-bottom: 1px solid #eee; padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+          <strong>Select XML File</strong>
+          <button onclick="hideFileBrowser()" style="float: right; border: none; background: none; font-size: 1.2em; cursor: pointer;">&times;</button>
+        </div>
+        <div id="currentPath" style="font-family: monospace; font-size: 0.9em; color: #666; margin-bottom: 0.5rem;"></div>
+        <div id="fileList" style="max-height: 200px; overflow-y: auto; border: 1px solid #eee;">
+          <div class="loading">Loading files...</div>
+        </div>
+        <div style="margin-top: 0.5rem;">
+          <button type="button" class="btn" onclick="navigateUp()">⬆️ Up</button>
+          <button type="button" class="btn btn-primary" id="selectBtn" onclick="loadSelectedFile()" disabled>Load File</button>
+        </div>
+      </div>
+      
+      <!-- Advanced: Direct path input -->
+      <details>
+        <summary style="cursor: pointer; color: #666; font-size: 0.9em;">Advanced: Enter path manually</summary>
+        <form method="get" style="margin-top: 0.5rem;">
+          <label>File path:
+            <input type="text" name="xml" id="pathInput" value="{{ xml or '' }}" size="60" placeholder="Enter full path to XML file..."/>
+            <button type="submit" class="btn btn-primary">Load</button>
+          </label>
+        </form>
+      </details>
+    </div>
 
     {% if error %}
     <p style="color: #b00">{{ error }}</p>
@@ -350,6 +418,96 @@
           applySort(btn.dataset.sort);
         });
       })();
+      
+      // Simple file browser functionality
+      let currentPath = '';
+      let selectedFile = '';
+      
+      function showFileBrowser() {
+        document.getElementById('fileBrowserPopup').style.display = 'block';
+        loadDirectory('');
+      }
+      
+      function hideFileBrowser() {
+        document.getElementById('fileBrowserPopup').style.display = 'none';
+      }
+      
+      function loadDirectory(path) {
+        currentPath = path;
+        const fileList = document.getElementById('fileList');
+        const pathDiv = document.getElementById('currentPath');
+        
+        fileList.innerHTML = '<div style="padding: 0.5rem;">Loading...</div>';
+        
+        const url = path ? `/ui/api/browse?path=${encodeURIComponent(path)}` : '/ui/api/browse';
+        
+        fetch(url)
+          .then(response => response.json())
+          .then(data => {
+            pathDiv.textContent = data.current_path;
+            fileList.innerHTML = '';
+            
+            // Add directories
+            data.directories.forEach(dir => {
+              const item = document.createElement('div');
+              item.style.cssText = 'padding: 0.3rem; cursor: pointer; border-bottom: 1px solid #f0f0f0;';
+              item.innerHTML = `📁 ${dir.name}`;
+              item.onclick = () => loadDirectory(dir.path);
+              item.onmouseover = () => item.style.background = '#f0f8ff';
+              item.onmouseout = () => item.style.background = '';
+              fileList.appendChild(item);
+            });
+            
+            // Add XML files
+            data.files.forEach(file => {
+              const item = document.createElement('div');
+              item.style.cssText = 'padding: 0.3rem; cursor: pointer; border-bottom: 1px solid #f0f0f0;';
+              item.innerHTML = `📄 ${file.name}`;
+              item.onclick = () => selectFile(file.path, file.name);
+              item.onmouseover = () => item.style.background = '#f0f8ff';
+              item.onmouseout = () => item.style.background = selectedFile === file.path ? '#e6f3ff' : '';
+              if (selectedFile === file.path) item.style.background = '#e6f3ff';
+              fileList.appendChild(item);
+            });
+            
+            if (data.directories.length === 0 && data.files.length === 0) {
+              fileList.innerHTML = '<div style="padding: 0.5rem; color: #666;">No XML files found</div>';
+            }
+          })
+          .catch(err => {
+            fileList.innerHTML = `<div style="padding: 0.5rem; color: #b00;">Error: ${err.message}</div>`;
+          });
+      }
+      
+      function selectFile(filePath, fileName) {
+        selectedFile = filePath;
+        document.getElementById('selectedFileName').textContent = `Selected: ${fileName}`;
+        document.getElementById('selectBtn').disabled = false;
+        document.getElementById('selectBtn').textContent = `Load "${fileName}"`;
+        
+        // Refresh the file list to show selection
+        const fileList = document.getElementById('fileList');
+        Array.from(fileList.children).forEach(item => {
+          item.style.background = item.textContent.includes(fileName) ? '#e6f3ff' : '';
+        });
+      }
+      
+      function loadSelectedFile() {
+        if (selectedFile) {
+          document.getElementById('pathInput').value = selectedFile;
+          document.querySelector('form').submit();
+        }
+      }
+      
+      function navigateUp() {
+        fetch(`/ui/api/browse?path=${encodeURIComponent(currentPath)}`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.parent_path) {
+              loadDirectory(data.parent_path);
+            }
+          });
+      }
     </script>
   </body>
 </html>

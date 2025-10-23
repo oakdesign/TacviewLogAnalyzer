@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import os
 import socket
+import sys
+import webbrowser
 from pathlib import Path
 
 from . import __version__
@@ -97,6 +99,23 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
+    
+    # Check if running without arguments (likely double-clicked)
+    if argv is None:
+        argv = sys.argv[1:]
+    
+    # If no arguments provided, auto-start web mode for user convenience
+    if not argv:
+        print("🚀 Tacview Log Analyzer - Web Interface")
+        print("=" * 50)
+        print("No arguments provided - starting web interface...")
+        print("📁 Place XML files in the same folder as this executable")
+        print("🌐 The web interface will open in your browser")
+        print("❌ Press Ctrl+C to exit\n")
+        
+        # Auto-start web mode with user-friendly defaults
+        argv = ["--web", "--web-auto-port"]
+    
     args = parser.parse_args(argv)
 
     if args.web:
@@ -119,6 +138,8 @@ def main(argv: list[str] | None = None) -> int:
 
         host = str(args.web_host)
         port = int(args.web_port)
+        auto_started = not sys.argv[1:]  # True if started with no arguments (auto mode)
+        
         if not _can_bind(host, port):
             if args.web_auto_port:
                 for p in [8090, 9000, 5000, 5500, 18080]:
@@ -126,7 +147,10 @@ def main(argv: list[str] | None = None) -> int:
                         continue
                     if _can_bind(host, p):
                         port = p
-                        print(f"[web] Port {args.web_port} unavailable or not permitted; switching to {port}")
+                        if auto_started:
+                            print(f"⚠️  Port {args.web_port} unavailable - using port {port}")
+                        else:
+                            print(f"[web] Port {args.web_port} unavailable or not permitted; switching to {port}")
                         break
                 else:
                     print("[web] No alternative port found. Try --web-host 0.0.0.0 or run on a permitted port.")
@@ -135,6 +159,17 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"[web] Cannot bind to {host}:{port}. Try --web-port 8090 or --web-auto-port.")
                 return 1
 
+        # Auto-open browser when started without arguments (double-clicked)
+        if auto_started:
+            url = f"http://{host}:{port}"
+            print(f"🌐 Starting web server at {url}")
+            print("📂 Opening browser...")
+            try:
+                webbrowser.open(url)
+            except Exception as e:
+                print(f"⚠️  Could not auto-open browser: {e}")
+                print(f"   Please manually open: {url}")
+        
         uvicorn.run(
             "tacview_log_analyzer.web_entry:app",
             host=host,

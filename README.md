@@ -22,9 +22,12 @@ A comprehensive tool to parse Tacview XML logs and generate detailed combat stat
 3. **Place the executable** in any folder of your choice
 
 ### Basic Usage
-Tacview load you acmi in Tacview and go to File->Export Flight Log and select to export as .xml
 
-Open Command Prompt or PowerShell in the folder containing the .exe and run:
+**Quick Start - Double Click**: Simply double-click `TacviewLogAnalyzer.exe` to start the web interface automatically! No command line required.
+
+**From Tacview**: Load your .acmi file in Tacview, go to File → Export Flight Log, and export as .xml format.
+
+**Command Line Options** (for advanced users):
 
 ```cmd
 # Generate comprehensive summary report
@@ -39,6 +42,12 @@ TacviewLogAnalyzer.exe --chains-combined your_tacview_log.xml
 # Show all available options
 TacviewLogAnalyzer.exe --help
 ```
+
+**Double-Click Mode**: When you double-click the executable:
+- 🚀 Automatically starts web interface 
+- 🌐 Opens your browser to the analysis page
+- 📁 Looks for XML files in the same folder
+- 🔧 Uses smart port detection (8000, 8090, 9000, etc.)
 
 ### Custom Web Interface Templates
 
@@ -89,12 +98,22 @@ Download the [example custom template](examples/custom_template_example.html) fr
 ### Example Usage
 
 ```cmd
-# Analyze a BMS mission log
+# Double-click the executable (recommended for most users)
+# - No command needed! Just double-click TacviewLogAnalyzer.exe
+
+# OR use command line for specific analysis
 TacviewLogAnalyzer.exe --summary "2025-10-22_Mission.xml"
 
-# Launch web interface for detailed analysis
+# OR launch web interface with a specific file
 TacviewLogAnalyzer.exe --web "2025-10-22_Mission.xml"
 ```
+
+**Double-Click Experience:**
+1. 🖱️ Double-click `TacviewLogAnalyzer.exe`
+2. 📝 See friendly startup message with instructions
+3. 🌐 Browser automatically opens to the analysis interface
+4. 📂 Browse and select XML files from the web interface
+5. ❌ Press Ctrl+C in the console window to exit
 
 The web interface will automatically open in your default browser at `http://localhost:8000`.
 
@@ -107,10 +126,20 @@ The web interface will automatically open in your default browser at `http://loc
 
 ### Troubleshooting
 
-**If the executable doesn't run:**
+**If double-click doesn't work:**
 - Ensure you're using a 64-bit Windows system
+- If a console window opens but nothing happens, check for error messages
+- Try running from Command Prompt to see detailed error output
+
+**If the executable doesn't run:**
+- Ensure you're using a 64-bit Windows system  
 - Try running from Command Prompt to see any error messages
 - Check that your antivirus isn't blocking the executable
+
+**If the web interface doesn't open automatically:**
+- The console will show the URL (usually `http://127.0.0.1:8000`)
+- Manually copy and paste this URL into your browser
+- If port 8000 is in use, the tool will automatically try alternatives (8090, 9000, etc.)
 
 **If the web interface doesn't open:**
 - Manually navigate to `http://localhost:8000` in your browser
@@ -121,6 +150,11 @@ The web interface will automatically open in your default browser at `http://loc
 - The tool can handle files up to several hundred MB
 - Processing time scales with file size and number of events
 - Consider using `--summary` mode for faster analysis of very large files
+
+**For custom templates:**
+- Ensure your custom `index.html` is in the same folder as the .exe
+- Check the console output for template loading messages
+- Refer to the example template in the GitHub repository for proper structure
 
 **For custom templates:**
 - Ensure your `index.html` is in the same directory as the executable

@@ -9,6 +9,7 @@ This directory contains example files and templates for Tacview Log Analyzer.
 This is a fully functional example of a custom HTML template that demonstrates how to:
 
 - **Customize the visual appearance** with dark theme and terminal-style aesthetics
+- **Enhanced file browser** with directory navigation and file selection
 - **Change colors and fonts** throughout the interface
 - **Add custom styling** while preserving all functionality
 - **Use proper Jinja2 template syntax** for data binding
@@ -20,14 +21,17 @@ This is a fully functional example of a custom HTML template that demonstrates h
 2. **Copy** it to the same directory as your `TacviewLogAnalyzer.exe`
 3. **Rename** it to `index.html`
 4. **Customize** the CSS styling as desired
-5. **Run** the analyzer with `--web` option
+5. **Run** the analyzer (double-click .exe for auto-web mode)
 
 ### Template Features
 
-- **Dark gradient background** (purple to blue)
-- **Green terminal-style text** with glowing cyan headers
-- **Custom notice banner** to show when template is active
-- **Emoji icons** throughout the interface
+- **📂 Enhanced file browser** - Click to navigate directories and select XML files
+- **🎨 Dark gradient background** (purple to blue)
+- **💚 Green terminal-style text** with glowing cyan headers
+- **🚨 Custom notice banner** to show when template is active
+- **😀 Emoji icons** throughout the interface
+- **⚡ Animated glow effects** on headers and buttons
+- **📱 Responsive design** for mobile and desktop
 - **Hover effects** on interactive elements
 - **Fully responsive** design for mobile and desktop
 - **All original functionality** preserved (sorting, filtering, etc.)
